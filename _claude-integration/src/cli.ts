@@ -5,9 +5,11 @@ const args = process.argv.slice(2);
 
 // Parse CLI arguments
 const portIndex = args.indexOf("--port");
-const port = portIndex !== -1 ? parseInt(args[portIndex + 1], 10) : 4242;
-const verbose = args.includes("--verbose") || args.includes("-v");
 const burstMode = args.includes("--burst");
+// Default ports: MCP uses 4242, burst uses 4243 to avoid conflicts
+const defaultPort = burstMode ? 4243 : 4242;
+const port = portIndex !== -1 ? parseInt(args[portIndex + 1], 10) : defaultPort;
+const verbose = args.includes("--verbose") || args.includes("-v");
 const helpRequested = args.includes("--help") || args.includes("-h");
 
 if (helpRequested) {
@@ -18,7 +20,7 @@ Usage:
   npx @agentation/claude [options]
 
 Options:
-  --port <number>   HTTP server port (default: 4242)
+  --port <number>   HTTP server port (default: 4242 for MCP, 4243 for burst)
   --verbose, -v     Enable verbose logging
   --burst           Run in standalone burst mode (auto-processes feedback)
   --help, -h        Show this help message

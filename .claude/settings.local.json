@@ -42,7 +42,8 @@
       "WebFetch(domain:gist.github.com)",
       "Bash(pnpm tsc:*)",
       "Bash(cat:*)",
-      "Bash(PORT=3001 npx next dev:*)"
+      "Bash(PORT=3001 npx next dev:*)",
+      "Bash(find:*)"
     ]
   }
 }
