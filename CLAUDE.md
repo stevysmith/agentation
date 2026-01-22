@@ -20,3 +20,10 @@ pnpm build      # Build package only
 
 The npm package is public. Changes to `_package-export/src/` affect all users.
 Website changes (`_package-export/example/`) only affect agentation.dev.
+
+## PR/Issue Approach
+
+- Package size is critical - avoid bloat
+- UI changes need extra scrutiny
+- Plugins/extensions → encourage separate repos
+- External binary files → never accept
