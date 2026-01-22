@@ -244,7 +244,7 @@ export type DemoAnnotation = {
   selectedText?: string;
 };
 
-type SyncStatus = "idle" | "syncing" | "synced" | "error";
+type SyncStatus = "idle" | "syncing" | "synced" | "error" | "burst" | "burst_processing";
 
 type PageFeedbackToolbarCSSProps = {
   demoAnnotations?: DemoAnnotation[];
@@ -270,6 +270,7 @@ export function PageFeedbackToolbarCSS({
   const [isActive, setIsActive] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
+  const [burstMode, setBurstMode] = useState(false);
   const [showMarkers, setShowMarkers] = useState(true);
 
   // Unified marker visibility state - controls both toolbar and eye toggle
@@ -1394,7 +1395,32 @@ export function PageFeedbackToolbarCSS({
     setTimeout(() => setCleared(false), 1500);
   }, [pathname, annotations.length]);
 
-  // Listen for server-sent events (clear commands from MCP)
+  // Toggle burst mode
+  const toggleBurstMode = useCallback(async () => {
+    if (!serverUrl) return;
+
+    try {
+      if (burstMode) {
+        // Stop burst mode
+        await fetch(`${serverUrl}/burst/stop`, { method: "POST" });
+        setBurstMode(false);
+        setSyncStatus("idle");
+      } else {
+        // Start burst mode
+        const response = await fetch(`${serverUrl}/burst/start`, { method: "POST" });
+        if (response.ok) {
+          setBurstMode(true);
+          setSyncStatus("burst");
+        }
+      }
+    } catch {
+      // Server not available
+      setSyncStatus("error");
+      setTimeout(() => setSyncStatus("idle"), 3000);
+    }
+  }, [serverUrl, burstMode]);
+
+  // Listen for server-sent events (clear commands and burst status from MCP)
   useEffect(() => {
     if (!serverUrl || !mounted) return;
 
@@ -1409,6 +1435,28 @@ export function PageFeedbackToolbarCSS({
           // Clear if it's for all pages or matches our pathname
           if (data.all || data.pathname === pathname) {
             clearAll();
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      });
+
+      // Listen for burst mode status updates
+      eventSource.addEventListener("burst", (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.status === "processing" || data.status === "collecting") {
+            setSyncStatus("burst_processing");
+          } else if (data.status === "batch_ready") {
+            // Batch is ready - show prominent indicator
+            setSyncStatus("burst_processing");
+            // Could add a notification sound or more prominent UI here
+          } else if (data.status === "active") {
+            setBurstMode(true);
+            setSyncStatus("burst");
+          } else if (data.status === "stopped") {
+            setBurstMode(false);
+            setSyncStatus("idle");
           }
         } catch {
           // Ignore parse errors
@@ -1780,22 +1828,30 @@ export function PageFeedbackToolbarCSS({
               <IconCopyAnimated size={24} copied={copied} />
             </button>
 
-            {/* Sync status indicator - only shown when serverUrl is configured */}
+            {/* Sync/Burst mode toggle - only shown when serverUrl is configured */}
             {serverUrl && (
-              <div
-                className={`${styles.controlButton} ${styles.syncButton} ${!isDarkMode ? styles.light : ""}`}
+              <button
+                className={`${styles.controlButton} ${styles.burstButton} ${!isDarkMode ? styles.light : ""} ${burstMode ? styles.burstActive : ""}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleBurstMode();
+                }}
                 title={
-                  syncStatus === "syncing"
-                    ? "Syncing to Claude..."
-                    : syncStatus === "synced"
-                      ? "Synced to Claude"
-                      : syncStatus === "error"
-                        ? "Sync failed - server not running?"
-                        : "Claude sync enabled"
+                  syncStatus === "burst_processing"
+                    ? "Processing feedback batch..."
+                    : syncStatus === "burst"
+                      ? "Burst mode active - click to stop"
+                      : syncStatus === "syncing"
+                        ? "Syncing to Claude..."
+                        : syncStatus === "synced"
+                          ? "Synced to Claude"
+                          : syncStatus === "error"
+                            ? "Sync failed - server not running?"
+                            : "Click to enable burst mode"
                 }
               >
-                <IconClaudeSync size={24} status={syncStatus} />
-              </div>
+                <IconClaudeSync size={24} status={burstMode ? (syncStatus === "burst_processing" ? "burst_processing" : "burst") : syncStatus} />
+              </button>
             )}
 
             <button

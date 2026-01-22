@@ -389,15 +389,23 @@ $green: #34c759;
 }
 
 // =============================================================================
-// Sync Indicator (Claude integration)
+// Burst Mode Button (Claude integration)
 // =============================================================================
 
-.syncButton {
-  cursor: default !important;
-  pointer-events: none;
+.burstButton {
+  cursor: pointer !important;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 
   &:hover {
-    background: transparent !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  &.burstActive {
+    box-shadow: 0 0 8px rgba(255, 59, 48, 0.5);
+
+    &:hover {
+      background: rgba(255, 59, 48, 0.15) !important;
+    }
   }
 }
 
