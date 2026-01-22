@@ -9,9 +9,16 @@ import { store } from "./store.js";
 import type { SyncPayload, ServerConfig, PageFeedback } from "./types.js";
 
 const DEFAULT_HTTP_PORT = 4242;
+const BURST_BATCH_DELAY_MS = 10000;
+const BURST_POLL_INTERVAL_MS = 2000;
 
 // SSE clients for broadcasting events to connected browsers
 const sseClients = new Set<ServerResponse>();
+
+// Burst mode state
+let burstModeActive = false;
+let burstLoopTimeout: ReturnType<typeof setTimeout> | null = null;
+let pendingBurstBatch: PageFeedback[] | null = null;
 
 /**
  * Broadcast an event to all connected SSE clients
@@ -21,6 +28,122 @@ function broadcastEvent(event: string, data: Record<string, unknown>) {
   for (const client of sseClients) {
     client.write(message);
   }
+}
+
+/**
+ * The burst mode loop - checks for feedback and batches it
+ *
+ * Instead of spawning Claude (which doesn't work from within MCP),
+ * this collects batches and notifies via SSE. Claude can then be
+ * asked to process the batch via the agentation_get_burst_batch tool.
+ */
+async function burstLoop(verbose: boolean): Promise<void> {
+  if (!burstModeActive) return;
+
+  const totalCount = store.getTotalCount();
+
+  if (totalCount > 0 && !pendingBurstBatch) {
+    if (verbose) {
+      console.error(`[agentation] Burst: Found ${totalCount} annotations, waiting ${BURST_BATCH_DELAY_MS / 1000}s for more...`);
+    }
+
+    // Notify browsers we're collecting
+    broadcastEvent("burst", { status: "collecting", count: totalCount });
+
+    // Wait for batch to accumulate
+    await new Promise((resolve) => setTimeout(resolve, BURST_BATCH_DELAY_MS));
+
+    // Check if burst mode was stopped during wait
+    if (!burstModeActive) return;
+
+    // Get all feedback and store as pending batch
+    const pages = store.getAll();
+
+    if (pages.length > 0) {
+      const annotationCount = pages.reduce((sum, p) => sum + p.annotations.length, 0);
+      pendingBurstBatch = pages;
+
+      if (verbose) {
+        console.error(`[agentation] Burst: Batch ready with ${annotationCount} annotations`);
+      }
+
+      // Notify browsers that batch is ready for processing
+      broadcastEvent("burst", {
+        status: "batch_ready",
+        count: annotationCount,
+        pages: pages.length,
+      });
+    }
+  }
+
+  // Schedule next check if still active
+  if (burstModeActive) {
+    burstLoopTimeout = setTimeout(() => burstLoop(verbose), BURST_POLL_INTERVAL_MS);
+  }
+}
+
+/**
+ * Start burst mode
+ */
+function startBurstMode(verbose: boolean): boolean {
+  if (burstModeActive) {
+    return false; // Already active
+  }
+
+  burstModeActive = true;
+  broadcastEvent("burst", { status: "active" });
+
+  if (verbose) {
+    console.error("[agentation] Burst mode started");
+  }
+
+  // Start the loop
+  burstLoop(verbose);
+
+  return true;
+}
+
+/**
+ * Stop burst mode
+ */
+function stopBurstMode(verbose: boolean): boolean {
+  if (!burstModeActive) {
+    return false; // Already stopped
+  }
+
+  burstModeActive = false;
+  pendingBurstBatch = null;
+
+  // Cancel pending timeout
+  if (burstLoopTimeout) {
+    clearTimeout(burstLoopTimeout);
+    burstLoopTimeout = null;
+  }
+
+  broadcastEvent("burst", { status: "stopped" });
+
+  if (verbose) {
+    console.error("[agentation] Burst mode stopped");
+  }
+
+  return true;
+}
+
+/**
+ * Get and clear the pending burst batch
+ */
+function consumeBurstBatch(): PageFeedback[] | null {
+  const batch = pendingBurstBatch;
+  pendingBurstBatch = null;
+
+  if (batch) {
+    // Clear the feedback from store
+    store.clearAll();
+    broadcastEvent("clear", { all: true });
+    broadcastEvent("burst", { status: "active" });
+  }
+
+  return batch;
 }
 
 /**
@@ -170,6 +293,29 @@ function createHttpServer(port: number, verbose: boolean): Promise<void> {
         return;
       }
 
+      // Start burst mode
+      if (req.method === "POST" && url.pathname === "/burst/start") {
+        const started = startBurstMode(verbose);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, started, active: burstModeActive }));
+        return;
+      }
+
+      // Stop burst mode
+      if (req.method === "POST" && url.pathname === "/burst/stop") {
+        const stopped = stopBurstMode(verbose);
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ success: true, stopped, active: burstModeActive }));
+        return;
+      }
+
+      // Get burst mode status
+      if (req.method === "GET" && url.pathname === "/burst/status") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ active: burstModeActive }));
+        return;
+      }
+
       // 404
       res.writeHead(404, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Not found" }));
@@ -250,6 +396,15 @@ function createMcpServer(verbose: boolean): Server {
           },
         },
       },
+      {
+        name: "agentation_get_burst_batch",
+        description:
+          "Get the pending burst mode batch. When burst mode is active and a batch is ready, this returns the accumulated feedback and clears it. Use this when the user has burst mode enabled and you're told a batch is ready.",
+        inputSchema: {
+          type: "object" as const,
+          properties: {},
+        },
+      },
     ],
   }));
 
@@ -309,6 +464,36 @@ function createMcpServer(verbose: boolean): Server {
         broadcastEvent("clear", { all: true });
         return {
           content: [{ type: "text", text: "Cleared all feedback" }],
+        };
+      }
+
+      case "agentation_get_burst_batch": {
+        if (!burstModeActive) {
+          return {
+            content: [{ type: "text", text: "Burst mode is not active. User can enable it by clicking the Clawd icon in the Agentation toolbar." }],
+          };
+        }
+
+        const batch = consumeBurstBatch();
+
+        if (!batch || batch.length === 0) {
+          return {
+            content: [{ type: "text", text: "No pending burst batch. Waiting for feedback to accumulate..." }],
+          };
+        }
+
+        const markdown = formatFeedbackMarkdown(batch);
+        const annotationCount = batch.reduce((sum, p) => sum + p.annotations.length, 0);
+
+        if (verbose) {
+          console.error(`[agentation] Burst batch consumed: ${annotationCount} annotations`);
+        }
+
+        return {
+          content: [{
+            type: "text",
+            text: `# Burst Mode Batch Ready\n\nProcessing ${annotationCount} annotations from ${batch.length} page(s).\n\n${markdown}\n\n---\n*Feedback has been cleared. Address these issues, then the next batch will be collected automatically.*`,
+          }],
         };
       }
 

@@ -830,12 +830,17 @@ export const IconClaudeSync = ({
   status = "idle",
 }: {
   size?: number;
-  status?: "idle" | "syncing" | "synced" | "error";
+  status?: "idle" | "syncing" | "synced" | "error" | "burst" | "burst_processing";
 }) => {
   // Clawd colors
   const bodyColor = "#C27C5C";
   const feetColor = "#8B5A42";
-  const eyeColor = "#1a1a1a";
+  const normalEyeColor = "#1a1a1a";
+  const burstEyeColor = "#ff3b30";
+
+  // Burst mode uses red eyes
+  const isBurstMode = status === "burst" || status === "burst_processing";
+  const eyeColor = isBurstMode ? burstEyeColor : normalEyeColor;
 
   // Status indicator colors
   const getStatusColor = () => {
@@ -846,6 +851,10 @@ export const IconClaudeSync = ({
         return "#34c759";
       case "error":
         return "#ff3b30";
+      case "burst":
+        return "#ff3b30";
+      case "burst_processing":
+        return "#ff3b30";
       default:
         return null;
     }
@@ -853,6 +862,7 @@ export const IconClaudeSync = ({
 
   const statusColor = getStatusColor();
   const opacity = status === "idle" ? 0.5 : 1;
+  const isAnimating = status === "syncing" || status === "burst_processing";
 
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -865,11 +875,18 @@ export const IconClaudeSync = ({
           0%, 100% { opacity: 1; }
           50% { opacity: 0.6; }
         }
+        @keyframes eyeGlow {
+          0%, 100% { filter: drop-shadow(0 0 2px #ff3b30); }
+          50% { filter: drop-shadow(0 0 4px #ff3b30); }
+        }
         .clawd-body {
-          ${status === "syncing" ? "animation: clawdBounce 0.5s ease-in-out infinite;" : ""}
+          ${isAnimating ? "animation: clawdBounce 0.5s ease-in-out infinite;" : ""}
         }
         .status-dot {
-          ${status === "syncing" ? "animation: clawdPulse 1s ease-in-out infinite;" : ""}
+          ${isAnimating ? "animation: clawdPulse 1s ease-in-out infinite;" : ""}
+        }
+        .burst-eyes {
+          ${isBurstMode ? "animation: eyeGlow 1.5s ease-in-out infinite;" : ""}
         }
       `}</style>
 
@@ -881,9 +898,11 @@ export const IconClaudeSync = ({
         <rect x="3" y="9" width="2" height="3" rx="0.5" fill={bodyColor} />
         <rect x="19" y="9" width="2" height="3" rx="0.5" fill={bodyColor} />
 
-        {/* Eyes - tall vertical rectangles */}
-        <rect x="8" y="8" width="2" height="4" rx="0.5" fill={eyeColor} />
-        <rect x="14" y="8" width="2" height="4" rx="0.5" fill={eyeColor} />
+        {/* Eyes - tall vertical rectangles, red and glowing in burst mode */}
+        <g className={isBurstMode ? "burst-eyes" : ""}>
+          <rect x="8" y="8" width="2" height="4" rx="0.5" fill={eyeColor} />
+          <rect x="14" y="8" width="2" height="4" rx="0.5" fill={eyeColor} />
+        </g>
 
         {/* Legs - 2 pairs */}
         <rect x="7" y="15" width="2" height="3" rx="0.5" fill={feetColor} />
