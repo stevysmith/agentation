@@ -1,34 +1,7 @@
 "use client";
 
-import { Highlight, themes } from "prism-react-renderer";
 import { Footer } from "../Footer";
-
-function CodeBlock({
-  code,
-  language = "tsx",
-}: {
-  code: string;
-  language?: string;
-}) {
-  return (
-    <Highlight theme={themes.github} code={code.trim()} language={language}>
-      {({ style, tokens, getLineProps, getTokenProps }) => (
-        <pre
-          className="code-block"
-          style={{ ...style, background: "transparent" }}
-        >
-          {tokens.map((line, i) => (
-            <div key={i} {...getLineProps({ line })}>
-              {line.map((token, key) => (
-                <span key={key} {...getTokenProps({ token })} />
-              ))}
-            </div>
-          ))}
-        </pre>
-      )}
-    </Highlight>
-  );
-}
+import { CodeBlock } from "../components/CodeBlock";
 
 export default function APIPage() {
   return (
@@ -129,33 +102,38 @@ function App() {
         <section>
           <h2>Annotation type</h2>
           <p>
-            The <code>Annotation</code> object passed to callbacks:
+            The <code>Annotation</code> object passed to callbacks. See <a href="/spec">Agentation Format</a> for the full schema.
           </p>
           <CodeBlock
             code={`type Annotation = {
+  // Required (core schema)
   id: string;              // Unique identifier
-  element: string;         // Human-readable element name
-  elementPath: string;     // CSS selector path
   comment: string;         // User's annotation text
-  timestamp: number;       // Unix timestamp
-  x: number;               // Position (% of viewport width)
-  y: number;               // Position (px from top, or viewport if fixed)
-  selectedText?: string;   // If text was selected
+  elementPath: string;     // CSS selector path
+  timestamp: number;       // Unix timestamp (ms)
+
+  // Recommended
+  element?: string;        // Tag name ("button", "div")
+  url?: string;            // Page URL
   boundingBox?: {          // Element dimensions
     x: number;
     y: number;
     width: number;
     height: number;
   };
-  // Additional fields (Detailed/Forensic modes)
-  nearbyText?: string;
+
+  // Context (varies by output format)
+  reactComponents?: string;   // Component tree
   cssClasses?: string;
-  nearbyElements?: string;
   computedStyles?: string;
-  fullPath?: string;
   accessibility?: string;
-  isMultiSelect?: boolean;
-  isFixed?: boolean;
+  nearbyText?: string;
+  selectedText?: string;      // If text was selected
+
+  // Browser component adds positioning
+  x: number;               // % of viewport width
+  y: number;               // px from top
+  isFixed?: boolean;       // Fixed-position element
 };`}
           />
         </section>

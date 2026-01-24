@@ -1,241 +1,7 @@
 "use client";
 
-import { useState, useId, useRef, useEffect } from "react";
-import { Highlight, themes } from "prism-react-renderer";
 import { Footer } from "../Footer";
-import { motion, useAnimate, type AnimationSequence } from "framer-motion";
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  const [scope, animate] = useAnimate();
-  const maskId = useId();
-
-  const inSequence: AnimationSequence = [
-    [
-      '[data-part="square-front"]',
-      { y: [0, -4] },
-      { duration: 0.12, ease: "easeOut" },
-    ],
-    [
-      '[data-part="square-back"]',
-      { x: [0, -4] },
-      { at: "<", duration: 0.12, ease: "easeOut" },
-    ],
-    [
-      '[data-part="square-front"], [data-part="square-back"]',
-      {
-        rx: [2, 7.25],
-        width: [10.5, 14.5],
-        height: [10.5, 14.5],
-        rotate: [0, -45],
-      },
-      { at: "<", duration: 0.12, ease: "easeOut" },
-    ],
-    [
-      '[data-part="check"]',
-      { opacity: [0, 1], pathOffset: [1, 0] },
-      { at: "-0.03", duration: 0 },
-    ],
-    ['[data-part="check"]', { pathLength: [0, 1] }, { duration: 0.1 }],
-  ];
-
-  const outSequence: AnimationSequence = [
-    [
-      '[data-part="check"]',
-      { pathOffset: [0, 1] },
-      { duration: 0.1, ease: "easeOut" },
-    ],
-    [
-      '[data-part="check"]',
-      { opacity: [1, 0], pathLength: [1, 0] },
-      { duration: 0 },
-    ],
-    [
-      '[data-part="square-front"], [data-part="square-back"]',
-      {
-        rx: [7.25, 2],
-        width: [14.5, 10.5],
-        height: [14.5, 10.5],
-        rotate: [-45, 0],
-      },
-      { at: "+0.03", duration: 0.12, ease: "easeOut" },
-    ],
-    [
-      '[data-part="square-front"]',
-      { y: [-4, 0] },
-      { at: "<", duration: 0.12, ease: "easeOut" },
-    ],
-    [
-      '[data-part="square-back"]',
-      { x: [-4, 0] },
-      { at: "<", duration: 0.12, ease: "easeOut" },
-    ],
-  ];
-
-  const isFirstRender = useRef(true);
-  const hasAnimatedIn = useRef(false);
-  const inAnimation = useRef<ReturnType<typeof animate> | null>(null);
-  const outAnimation = useRef<ReturnType<typeof animate> | null>(null);
-
-  const animateIn = async () => {
-    if (
-      !inAnimation.current &&
-      !outAnimation.current &&
-      !hasAnimatedIn.current
-    ) {
-      const animation = animate(inSequence);
-      inAnimation.current = animation;
-      await animation;
-      inAnimation.current = null;
-      if (animation.speed === 1) hasAnimatedIn.current = true;
-    } else if (outAnimation.current) {
-      outAnimation.current.speed = -1;
-    } else if (inAnimation.current) {
-      inAnimation.current.speed = 1;
-    }
-  };
-
-  const animateOut = async () => {
-    if (inAnimation.current) {
-      inAnimation.current.speed = -1;
-    } else if (hasAnimatedIn.current && !outAnimation.current) {
-      const animation = animate(outSequence);
-      outAnimation.current = animation;
-      await animation;
-      outAnimation.current = null;
-      if (animation.speed === 1) hasAnimatedIn.current = false;
-    } else if (outAnimation.current) {
-      outAnimation.current.speed = 1;
-    }
-  };
-
-  useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-    copied ? animateIn() : animateOut();
-  }, [copied]);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="copy-button"
-      title="Copy to clipboard"
-      style={{
-        position: "absolute",
-        top: "50%",
-        right: "0.75rem",
-        transform: "translateY(-50%)",
-        padding: "0.375rem",
-        background: "transparent",
-        border: "none",
-        borderRadius: "0.25rem",
-        cursor: "pointer",
-        color: "rgba(0,0,0,0.35)",
-        transition: "color 0.15s ease",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <svg
-        ref={scope}
-        style={{ overflow: "visible" }}
-        width={20}
-        height={20}
-        viewBox="0 0 24 24"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        aria-hidden="true"
-      >
-        <motion.rect
-          data-part="square-front"
-          x="4.75"
-          y="8.75"
-          width="10.5"
-          height="10.5"
-          rx="2"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <g mask={`url(#${maskId})`}>
-          <motion.rect
-            data-part="square-back"
-            x="8.75"
-            y="4.75"
-            width="10.5"
-            height="10.5"
-            rx="2"
-            stroke="currentColor"
-            strokeWidth="1.5"
-          />
-        </g>
-        <motion.path
-          data-part="check"
-          initial={{ pathLength: 0, opacity: 0 }}
-          d="M9.25 12.25L11 14.25L15 10"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        <mask id={maskId} maskUnits="userSpaceOnUse">
-          <rect width="24" height="24" fill="#fff" />
-          <motion.rect
-            data-part="square-front"
-            x="4.75"
-            y="8.75"
-            width="10.5"
-            height="10.5"
-            rx="2"
-            fill="#000"
-            stroke="#000"
-            strokeWidth="1.5"
-          />
-        </mask>
-      </svg>
-    </button>
-  );
-}
-
-function CodeBlock({
-  code,
-  language = "tsx",
-  copyable = false,
-}: {
-  code: string;
-  language?: string;
-  copyable?: boolean;
-}) {
-  return (
-    <div style={{ position: "relative" }}>
-      <Highlight theme={themes.github} code={code.trim()} language={language}>
-        {({ style, tokens, getLineProps, getTokenProps }) => (
-          <pre
-            className="code-block"
-            style={{ ...style, background: "transparent" }}
-          >
-            {tokens.map((line, i) => (
-              <div key={i} {...getLineProps({ line })}>
-                {line.map((token, key) => (
-                  <span key={key} {...getTokenProps({ token })} />
-                ))}
-              </div>
-            ))}
-          </pre>
-        )}
-      </Highlight>
-      {copyable && <CopyButton text={code.trim()} />}
-    </div>
-  );
-}
+import { CodeBlock } from "../components/CodeBlock";
 
 export default function InstallPage() {
   return (
@@ -423,7 +189,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", width: "35%" }}>
                   <code>onAnnotationAdd</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Fired when an annotation is added
                 </td>
               </tr>
@@ -431,7 +197,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                   <code>onAnnotationDelete</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Fired when an annotation is deleted
                 </td>
               </tr>
@@ -439,7 +205,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                   <code>onAnnotationUpdate</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Fired when an annotation comment is edited
                 </td>
               </tr>
@@ -447,7 +213,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                   <code>onAnnotationsClear</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Fired when all annotations are cleared
                 </td>
               </tr>
@@ -455,7 +221,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0" }}>
                   <code>onCopy</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Fired when copy button is clicked (receives markdown)
                 </td>
               </tr>
@@ -469,7 +235,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0", width: "35%" }}>
                   <code>copyToClipboard</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Auto-copy on add (default: <code style={{ color: "rgba(0,0,0,0.7)" }}>true</code>)
                 </td>
               </tr>
@@ -483,7 +249,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", width: "35%" }}>
                   <code>endpoint</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Server URL (e.g., <code style={{ color: "rgba(0,0,0,0.7)" }}>&quot;http://localhost:4747&quot;</code>)
                 </td>
               </tr>
@@ -491,7 +257,7 @@ function App() {
                 <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                   <code>sessionId</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Join an existing session (optional)
                 </td>
               </tr>
@@ -499,76 +265,13 @@ function App() {
                 <td style={{ padding: "0.5rem 0" }}>
                   <code>onSessionCreated</code>
                 </td>
-                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Fired when new session is created (receives <code style={{ color: "rgba(0,0,0,0.7)" }}>sessionId: string</code>)
                 </td>
               </tr>
             </tbody>
           </table>
 
-          <h3 style={{ fontSize: "0.9375rem", marginTop: "1.5rem", marginBottom: "0.5rem" }}>Demo Mode</h3>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem" }}>
-            <tbody>
-              <tr>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", width: "35%" }}>
-                  <code>enableDemoMode</code>
-                </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
-                  Auto-play demo annotations (default: <code style={{ color: "rgba(0,0,0,0.7)" }}>false</code>)
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
-                  <code>demoAnnotations</code>
-                </td>
-                <td style={{ padding: "0.5rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
-                  Array of <code style={{ color: "rgba(0,0,0,0.7)" }}>{`{ selector, comment }`}</code> for demo
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: "0.5rem 0" }}>
-                  <code>demoDelay</code>
-                </td>
-                <td style={{ padding: "0.5rem 0", color: "rgba(0,0,0,0.5)" }}>
-                  Delay between demo annotations in ms (default: <code style={{ color: "rgba(0,0,0,0.7)" }}>1000</code>)
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-
-        <section>
-          <h2>Programmatic integration</h2>
-          <p>
-            Use the <code>onAnnotationAdd</code> callback to receive structured
-            annotation data directly. See the <a href="/api">API page</a> for all available callbacks.
-          </p>
-          <CodeBlock
-            code={`import { Agentation, type Annotation } from "agentation";
-
-function App() {
-  const handleAnnotation = (annotation: Annotation) => {
-    // Structured data - no parsing needed
-    console.log(annotation.element);      // "Button"
-    console.log(annotation.elementPath);  // "body > div > button"
-    console.log(annotation.boundingBox);  // { x, y, width, height }
-
-    // Send to your agent, API, etc.
-    sendToAgent(annotation);
-  };
-
-  return (
-    <>
-      <YourApp />
-      <Agentation
-        onAnnotationAdd={handleAnnotation}
-        copyToClipboard={false}  // Skip clipboard if handling via callback
-      />
-    </>
-  );
-}`}
-            language="tsx"
-          />
         </section>
 
         <section>

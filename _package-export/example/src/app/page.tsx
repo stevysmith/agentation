@@ -5,41 +5,84 @@ import Link from "next/link";
 import { Footer } from "./Footer";
 import { HeroDemo } from "./components/HeroDemo";
 
+// Animated copy/checkmark icon
+const IconCopyAnimated = ({ size = 24, copied = false }: { size?: number; copied?: boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <style>{`
+      .copy-icon, .check-icon {
+        transition: opacity 0.2s ease, transform 0.2s ease;
+      }
+    `}</style>
+    {/* Copy icon */}
+    <g className="copy-icon" style={{ opacity: copied ? 0 : 1, transform: copied ? 'scale(0.8)' : 'scale(1)', transformOrigin: 'center' }}>
+      <path
+        d="M4.75 11.25C4.75 10.4216 5.42157 9.75 6.25 9.75H12.75C13.5784 9.75 14.25 10.4216 14.25 11.25V17.75C14.25 18.5784 13.5784 19.25 12.75 19.25H6.25C5.42157 19.25 4.75 18.5784 4.75 17.75V11.25Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M17.25 14.25H17.75C18.5784 14.25 19.25 13.5784 19.25 12.75V6.25C19.25 5.42157 18.5784 4.75 17.75 4.75H11.25C10.4216 4.75 9.75 5.42157 9.75 6.25V6.75"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+      />
+    </g>
+    {/* Checkmark circle */}
+    <g className="check-icon" style={{ opacity: copied ? 1 : 0, transform: copied ? 'scale(1)' : 'scale(0.8)', transformOrigin: 'center' }}>
+      <path
+        d="M12 20C7.58172 20 4 16.4182 4 12C4 7.58172 7.58172 4 12 4C16.4182 4 20 7.58172 20 12C20 16.4182 16.4182 20 12 20Z"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M15 10L11 14.25L9.25 12.25"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </g>
+  </svg>
+);
+
+function InstallSnippet() {
+  const [copied, setCopied] = useState(false);
+  const command = "npm install agentation";
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(command);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="install-snippet"
+      title="Copy to clipboard"
+    >
+      <code>{command}</code>
+      <IconCopyAnimated size={14} copied={copied} />
+    </button>
+  );
+}
+
 export default function AgentationDocs() {
   const [inputValue, setInputValue] = useState("");
 
   return (
     <>
       <article className="article">
-        <header>
-          <h1 style={{ fontSize: '2rem', lineHeight: 1.15, marginBottom: '0.5rem' }}>Point at bugs.<br />Let AI fix them.</h1>
+        <header style={{ position: 'relative' }}>
+          <InstallSnippet />
+          <h1 style={{ fontSize: '2rem', lineHeight: 1.15, marginBottom: '0.5rem' }}>Point at bugs.<br /><span className="sketchy-underline">Let AI fix them.</span></h1>
           <p className="tagline">Agentation turns UI annotations into structured context that AI coding agents can understand and act on. Click any element, add a note, and paste the output into Claude Code, Cursor, or any AI tool.</p>
         </header>
 
         {/* Animated demo */}
         <HeroDemo />
-
-        <section>
-          <p>
-            Agentation (<span style={{ color: 'rgba(0,0,0,0.5)' }}>agent + annotation</span>) is a dev tool that lets you annotate elements on your webpage
-            and generate structured feedback for AI coding agents.
-          </p>
-          <p>
-            Click elements, select text, add notes, and paste the output into Claude Code, Cursor, or
-            any agent that has access to your codebase. It&rsquo;s fully agent-agnostic, so the
-            markdown output works with any AI tool. Zero dependencies beyond React.
-          </p>
-          <p>
-            The key insight: agents can find and fix code much faster when they
-            know exactly which element you&rsquo;re referring to. Agentation captures
-            class names, selectors, and positions so the agent can locate the corresponding
-            source files.
-          </p>
-          <p>
-            It grew out of <a href="https://benji.org/annotating" className="styled-link" target="_blank" rel="noopener noreferrer">a post by Benji Taylor</a> exploring
-            how to give better feedback to AI coding agents.
-          </p>
-        </section>
 
         <section>
           <h2>Quick start</h2>
@@ -130,6 +173,11 @@ export default function AgentationDocs() {
             <li><strong>Use text selection</strong> &mdash; for typos or content issues, select the exact text</li>
             <li><strong>Pause animations</strong> &mdash; to annotate a specific animation frame</li>
           </ul>
+        </section>
+
+        <section className="quickstart-links">
+          <p>Want real-time sync? <Link href="/protocol" className="styled-link">Set up MCP →</Link></p>
+          <p>Build your own integration? <Link href="/api" className="styled-link">See the API →</Link></p>
         </section>
 
       </article>

@@ -1,106 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Footer } from "../Footer";
-import { Highlight, themes } from "prism-react-renderer";
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async () => {
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="copy-button"
-      title="Copy to clipboard"
-      style={{
-        position: "absolute",
-        top: "0.5rem",
-        right: "0.5rem",
-        padding: "0.375rem",
-        background: "transparent",
-        border: "none",
-        borderRadius: "0.25rem",
-        cursor: "pointer",
-        color: copied ? "rgba(0,0,0,0.6)" : "rgba(0,0,0,0.35)",
-        transition: "color 0.15s ease",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <svg
-        width={18}
-        height={18}
-        viewBox="0 0 24 24"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        aria-hidden="true"
-      >
-        {copied ? (
-          <path
-            d="M5 13l4 4L19 7"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        ) : (
-          <>
-            <rect
-              x="4.75"
-              y="8.75"
-              width="10.5"
-              height="10.5"
-              rx="2"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-            <path
-              d="M8.75 8.75V6.75a2 2 0 012-2h6.5a2 2 0 012 2v6.5a2 2 0 01-2 2h-2"
-              stroke="currentColor"
-              strokeWidth="1.5"
-            />
-          </>
-        )}
-      </svg>
-    </button>
-  );
-}
-
-function CodeBlock({
-  code,
-  language = "typescript",
-  copyable = false,
-}: {
-  code: string;
-  language?: string;
-  copyable?: boolean;
-}) {
-  return (
-    <div style={{ position: "relative" }}>
-      <Highlight theme={themes.github} code={code.trim()} language={language}>
-        {({ style, tokens, getLineProps, getTokenProps }) => (
-          <pre className="code-block" style={{ ...style, background: "transparent" }}>
-            {tokens.map((line, i) => (
-              <div key={i} {...getLineProps({ line })}>
-                {line.map((token, key) => (
-                  <span key={key} {...getTokenProps({ token })} />
-                ))}
-              </div>
-            ))}
-          </pre>
-        )}
-      </Highlight>
-      {copyable && <CopyButton text={code.trim()} />}
-    </div>
-  );
-}
+import { CodeBlock } from "../components/CodeBlock";
 
 function ToolName({ children }: { children: string }) {
   return (
@@ -122,7 +23,23 @@ export default function ProtocolPage() {
         </header>
 
         <section>
-          <h2>Why Structured Feedback?</h2>
+          <h2 id="quick-start">Quick Start</h2>
+          <p>
+            Start the MCP server in your project directory:
+          </p>
+          <CodeBlock
+            language="bash"
+            copyable
+            code={`npx agentation server`}
+          />
+          <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.75rem" }}>
+            This starts both the MCP server (for agents) and HTTP server (for the browser toolbar).
+            The toolbar connects automatically when the server is running.
+          </p>
+        </section>
+
+        <section>
+          <h2 id="why-structured-feedback">Why Structured Feedback?</h2>
           <p>
             When a user clicks a misaligned button to report it, your agent receives the exact
             component path (<code>ProductPage &gt; AddToCartButton</code>), its CSS state,
@@ -167,7 +84,7 @@ export default function ProtocolPage() {
         </section>
 
         <section>
-          <h2>How It Works</h2>
+          <h2 id="how-it-works">How It Works</h2>
           <ol style={{ paddingLeft: "1.25rem" }}>
             <li><strong>Reviewer</strong> clicks an element and adds feedback in the browser</li>
             <li><strong>Browser</strong> captures element context and syncs to server (HTTP)</li>
@@ -182,7 +99,7 @@ export default function ProtocolPage() {
         </section>
 
         <section>
-          <h2>Annotation Lifecycle</h2>
+          <h2 id="annotation-lifecycle">Annotation Lifecycle</h2>
           <p style={{ fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.7)" }}>
             pending → acknowledged → resolved | dismissed
           </p>
@@ -192,7 +109,7 @@ export default function ProtocolPage() {
         </section>
 
         <section>
-          <h2>MCP Tools</h2>
+          <h2 id="mcp-tools">MCP Tools</h2>
           <p>
             Seven tools are available via the <a href="https://modelcontextprotocol.io" target="_blank" rel="noopener noreferrer">Model Context Protocol</a>:
           </p>
@@ -269,9 +186,9 @@ export default function ProtocolPage() {
         </section>
 
         <section>
-          <h2>Annotation Schema</h2>
+          <h2 id="annotation-schema">Annotation Schema</h2>
           <p>
-            MCP tools exchange annotations in the <a href="/spec">Structured Annotation Format (SAF)</a>.
+            MCP tools exchange annotations in the <a href="/spec">Agentation Format</a>.
             Key fields agents receive:
           </p>
           <CodeBlock
@@ -292,7 +209,7 @@ export default function ProtocolPage() {
         </section>
 
         <section>
-          <h2>Agent Configuration</h2>
+          <h2 id="agent-configuration">Agent Configuration</h2>
           <p>
             Add Agentation as an MCP server in your agent&apos;s config:
           </p>
@@ -316,7 +233,7 @@ export default function ProtocolPage() {
         </section>
 
         <section>
-          <h2>Example Workflow</h2>
+          <h2 id="example-workflow">Example Workflow</h2>
           <CodeBlock
             language="typescript"
             code={`// 1. Agent checks for feedback
@@ -340,105 +257,141 @@ await agentation_resolve({
         </section>
 
         <section>
-          <h2>HTTP API</h2>
+          <h2 id="http-api">HTTP API</h2>
           <p>
             The browser component syncs annotations via HTTP. The server exposes:
           </p>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.875rem", marginTop: "1rem" }}>
             <tbody>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", width: "45%", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  GET /sessions
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", width: "4rem", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  GET
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /sessions
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   List all sessions
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  POST /sessions
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  POST
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /sessions
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Create a new session
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  GET /sessions/:id
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  GET
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /sessions/:id
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Get session with annotations
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  GET /sessions/:id/pending
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  GET
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /sessions/:id/pending
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Get pending annotations only
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  GET /sessions/:id/events
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  GET
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /sessions/:id/events
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   SSE stream for session
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  POST /sessions/:id/annotations
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  POST
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /sessions/:id/annotations
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Add an annotation
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  GET /annotations/:id
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  GET
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /annotations/:id
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Get a single annotation
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  PATCH /annotations/:id
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  PATCH
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /annotations/:id
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Update an annotation
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  DELETE /annotations/:id
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  DELETE
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /annotations/:id
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Delete an annotation
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  POST /annotations/:id/thread
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  POST
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /annotations/:id/thread
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Add a thread message
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  GET /events?domain=...
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  GET
                 </td>
-                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /events?domain=...
+                </td>
+                <td style={{ padding: "0.375rem 0", borderBottom: "1px solid rgba(0,0,0,0.06)", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Site-level SSE stream
                 </td>
               </tr>
               <tr>
-                <td style={{ padding: "0.375rem 0", fontFamily: "monospace", fontSize: "0.8125rem" }}>
-                  GET /health
+                <td style={{ padding: "0.375rem 0", fontFamily: "monospace", fontSize: "0.8125rem", color: "rgba(0,0,0,0.4)" }}>
+                  GET
                 </td>
-                <td style={{ padding: "0.375rem 0", color: "rgba(0,0,0,0.5)" }}>
+                <td style={{ padding: "0.375rem 0", fontFamily: "monospace", fontSize: "0.8125rem" }}>
+                  /health
+                </td>
+                <td style={{ padding: "0.375rem 0", color: "rgba(0,0,0,0.5)", textAlign: "right" }}>
                   Server health check
                 </td>
               </tr>
@@ -450,7 +403,7 @@ await agentation_resolve({
         </section>
 
         <section>
-          <h2>Real-Time Events (SSE)</h2>
+          <h2 id="real-time-events">Real-Time Events (SSE)</h2>
           <p>
             Subscribe to real-time events via Server-Sent Events:
           </p>
@@ -466,7 +419,7 @@ curl -N "http://localhost:4747/events?domain=localhost:3001"
 curl -N -H "Last-Event-ID: 42" http://localhost:4747/sessions/:id/events`}
           />
           <p style={{ marginTop: "0.75rem" }}>
-            Events are wrapped in the <a href="/spec">SAFEvent envelope</a>:
+            Events are wrapped in the <a href="/spec">AgentationEvent envelope</a>:
           </p>
           <CodeBlock
             language="typescript"
@@ -493,7 +446,7 @@ data: {"type":"annotation.created","sessionId":"sess_abc","sequence":42,"payload
         </section>
 
         <section>
-          <h2>Persistence</h2>
+          <h2 id="persistence">Persistence</h2>
           <p>
             Sessions and annotations persist to SQLite by default:
           </p>
