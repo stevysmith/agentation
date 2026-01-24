@@ -121,7 +121,6 @@ type ToolbarSettings = {
   annotationColor: string;
   blockInteractions: boolean;
   reactComponentMode: ReactComponentMode;
-  sendViaMcp: boolean;
 };
 
 const DEFAULT_SETTINGS: ToolbarSettings = {
@@ -130,7 +129,6 @@ const DEFAULT_SETTINGS: ToolbarSettings = {
   annotationColor: "#3c82f7",
   blockInteractions: false,
   reactComponentMode: "filtered",
-  sendViaMcp: true,
 };
 
 const REACT_MODE_OPTIONS: {
@@ -2196,27 +2194,30 @@ export function PageFeedbackToolbarCSS({
                 <span
                   className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
                 >
-                  Send via MCP
+                  MCP Server
                   <span
                     className={styles.helpIcon}
-                    data-tooltip="Send annotations to Claude Code via MCP server"
+                    data-tooltip={
+                      connectionStatus === "connected"
+                        ? "Connected to MCP server"
+                        : connectionStatus === "connecting"
+                          ? "Connecting to MCP server..."
+                          : "MCP server not reachable"
+                    }
                   >
                     <IconHelp size={20} />
                   </span>
                 </span>
-                <label className={styles.toggleSwitch}>
-                  <input
-                    type="checkbox"
-                    checked={settings.sendViaMcp}
-                    onChange={(e) =>
-                      setSettings((s) => ({
-                        ...s,
-                        sendViaMcp: e.target.checked,
-                      }))
-                    }
-                  />
-                  <span className={styles.toggleSlider} />
-                </label>
+                <div
+                  className={`${styles.mcpStatusDot} ${styles[connectionStatus]}`}
+                  title={
+                    connectionStatus === "connected"
+                      ? "Connected"
+                      : connectionStatus === "connecting"
+                        ? "Connecting..."
+                        : "Disconnected"
+                  }
+                />
               </div>
             </div>
 

@@ -1442,6 +1442,56 @@ $green: #34c759;
   }
 }
 
+// MCP Status Dot
+@keyframes mcpPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba($green, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba($green, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba($green, 0);
+  }
+}
+
+@keyframes mcpPulseError {
+  0% {
+    box-shadow: 0 0 0 0 rgba($red, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 6px rgba($red, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba($red, 0);
+  }
+}
+
+.mcpStatusDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+
+  // Connecting state
+  &.connecting {
+    background: #f5a623;
+    animation: mcpPulse 1.5s infinite;
+  }
+
+  // Connected state
+  &.connected {
+    background: $green;
+    animation: mcpPulse 2s infinite;
+  }
+
+  // Disconnected/error state
+  &.disconnected {
+    background: $red;
+    animation: mcpPulseError 2s infinite;
+  }
+}
+
 .helpIcon {
     position: relative;
     display: inline-flex;
