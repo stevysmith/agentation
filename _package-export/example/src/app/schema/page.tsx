@@ -3,7 +3,7 @@
 import { Footer } from "../Footer";
 import { CodeBlock } from "../components/CodeBlock";
 
-export default function SpecPage() {
+export default function SchemaPage() {
   return (
     <>
       <article className="article">
@@ -196,7 +196,7 @@ type ThreadMessage = {
           />
           <p style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)", marginTop: "0.5rem" }}>
             The <code>sequence</code> number enables clients to detect missed events and request replay.
-            See <a href="/protocol">Protocol</a> for SSE streaming details.
+            See <a href="/agents">Agents</a> for SSE streaming details.
           </p>
         </section>
 

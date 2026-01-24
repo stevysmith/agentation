@@ -18,10 +18,84 @@ import {
   getEventsSince,
 } from "./store.js";
 import { eventBus } from "./events.js";
-import type { Annotation, SAFEvent } from "../types.js";
+import type { Annotation, SAFEvent, ActionRequest } from "../types.js";
 
 // Track active SSE connections for cleanup
 const sseConnections = new Set<ServerResponse>();
+// Track agent SSE connections separately (for accurate delivery status)
+// These are connections from MCP wait_for_action, not browser toolbars
+const agentConnections = new Set<ServerResponse>();
+
+// -----------------------------------------------------------------------------
+// Webhook Support
+// -----------------------------------------------------------------------------
+
+/**
+ * Get configured webhook URLs from environment variables.
+ *
+ * Supports:
+ * - AGENTATION_WEBHOOK_URL: Single webhook URL
+ * - AGENTATION_WEBHOOKS: Comma-separated list of webhook URLs
+ */
+function getWebhookUrls(): string[] {
+  const urls: string[] = [];
+
+  // Single webhook URL
+  const singleUrl = process.env.AGENTATION_WEBHOOK_URL;
+  if (singleUrl) {
+    urls.push(singleUrl.trim());
+  }
+
+  // Multiple webhook URLs (comma-separated)
+  const multipleUrls = process.env.AGENTATION_WEBHOOKS;
+  if (multipleUrls) {
+    const parsed = multipleUrls
+      .split(",")
+      .map((url) => url.trim())
+      .filter((url) => url.length > 0);
+    urls.push(...parsed);
+  }
+
+  return urls;
+}
+
+/**
+ * Send webhook notification for an action request.
+ * Fire-and-forget: doesn't wait for response, logs errors but doesn't throw.
+ */
+function sendWebhooks(actionRequest: ActionRequest): void {
+  const webhookUrls = getWebhookUrls();
+
+  if (webhookUrls.length === 0) {
+    return;
+  }
+
+  const payload = JSON.stringify(actionRequest);
+
+  for (const url of webhookUrls) {
+    // Fire and forget - use .then().catch() instead of await
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Agentation-Webhook/1.0",
+      },
+      body: payload,
+    })
+      .then((res) => {
+        console.log(
+          `[Webhook] POST ${url} -> ${res.status} ${res.statusText}`
+        );
+      })
+      .catch((err) => {
+        console.error(`[Webhook] POST ${url} failed:`, (err as Error).message);
+      });
+  }
+
+  console.log(
+    `[Webhook] Fired ${webhookUrls.length} webhook(s) for session ${actionRequest.sessionId}`
+  );
+}
 
 // -----------------------------------------------------------------------------
 // Request Helpers
@@ -214,6 +288,65 @@ const getAllPendingHandler: RouteHandler = async (_req, res) => {
 };
 
 /**
+ * POST /sessions/:id/action - Request agent action on annotations.
+ *
+ * Emits an action.requested event via SSE with the current annotations
+ * and formatted output. The agent can listen for this event to know
+ * when the user wants action taken.
+ *
+ * Also sends webhooks to configured URLs (via AGENTATION_WEBHOOK_URL or
+ * AGENTATION_WEBHOOKS environment variables).
+ */
+const requestActionHandler: RouteHandler = async (req, res, params) => {
+  try {
+    const sessionId = params.id;
+    const body = await parseBody<{ output: string }>(req);
+
+    // Verify session exists
+    const session = getSessionWithAnnotations(sessionId);
+    if (!session) {
+      return sendError(res, 404, "Session not found");
+    }
+
+    if (!body.output) {
+      return sendError(res, 400, "output is required");
+    }
+
+    // Build action request payload
+    const actionRequest: ActionRequest = {
+      sessionId,
+      annotations: session.annotations,
+      output: body.output,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Emit event (will be sent to all SSE subscribers)
+    eventBus.emit("action.requested", sessionId, actionRequest);
+
+    // Send webhooks (fire and forget, non-blocking)
+    const webhookUrls = getWebhookUrls();
+    sendWebhooks(actionRequest);
+
+    // Return delivery info so client knows if anyone received it
+    // Only count agent connections (with ?agent=true), not browser toolbar connections
+    const agentListeners = agentConnections.size;
+    const webhooks = webhookUrls.length;
+
+    sendJson(res, 200, {
+      success: true,
+      annotationCount: session.annotations.length,
+      delivered: {
+        sseListeners: agentListeners,
+        webhooks: webhooks,
+        total: agentListeners + webhooks,
+      },
+    });
+  } catch (err) {
+    sendError(res, 400, (err as Error).message);
+  }
+};
+
+/**
  * POST /annotations/:id/thread - Add a thread message.
  */
 const addThreadHandler: RouteHandler = async (req, res, params) => {
@@ -244,6 +377,8 @@ const addThreadHandler: RouteHandler = async (req, res, params) => {
  */
 const sseHandler: RouteHandler = async (req, res, params) => {
   const sessionId = params.id;
+  const url = new URL(req.url || "/", "http://localhost");
+  const isAgent = url.searchParams.get("agent") === "true";
 
   // Verify session exists
   const session = getSessionWithAnnotations(sessionId);
@@ -261,6 +396,9 @@ const sseHandler: RouteHandler = async (req, res, params) => {
 
   // Track this connection
   sseConnections.add(res);
+  if (isAgent) {
+    agentConnections.add(res);
+  }
 
   // Send initial comment to establish connection
   res.write(": connected\n\n");
@@ -293,6 +431,7 @@ const sseHandler: RouteHandler = async (req, res, params) => {
     clearInterval(keepAlive);
     unsubscribe();
     sseConnections.delete(res);
+    agentConnections.delete(res);
   });
 };
 
@@ -314,6 +453,7 @@ function sendSSEEvent(res: ServerResponse, event: SAFEvent): void {
 const globalSseHandler: RouteHandler = async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
   const domain = url.searchParams.get("domain");
+  const isAgent = url.searchParams.get("agent") === "true";
 
   if (!domain) {
     return sendError(res, 400, "domain query parameter required");
@@ -329,6 +469,9 @@ const globalSseHandler: RouteHandler = async (req, res) => {
 
   // Track this connection
   sseConnections.add(res);
+  if (isAgent) {
+    agentConnections.add(res);
+  }
 
   // Send initial comment to establish connection
   res.write(`: connected to domain ${domain}\n\n`);
@@ -358,6 +501,7 @@ const globalSseHandler: RouteHandler = async (req, res) => {
     clearInterval(keepAlive);
     unsubscribe();
     sseConnections.delete(res);
+    agentConnections.delete(res);
   });
 };
 
@@ -413,6 +557,12 @@ const routes: Route[] = [
     method: "GET",
     pattern: /^\/sessions\/([^/]+)\/pending$/,
     handler: getPendingHandler,
+    paramNames: ["id"],
+  },
+  {
+    method: "POST",
+    pattern: /^\/sessions\/([^/]+)\/action$/,
+    handler: requestActionHandler,
     paramNames: ["id"],
   },
   {
@@ -490,6 +640,17 @@ export function startHttpServer(port: number): void {
     // Health check
     if (pathname === "/health" && method === "GET") {
       return sendJson(res, 200, { status: "ok" });
+    }
+
+    // Status endpoint - returns server capabilities and active listeners
+    if (pathname === "/status" && method === "GET") {
+      const webhookUrls = getWebhookUrls();
+      return sendJson(res, 200, {
+        webhooksConfigured: webhookUrls.length > 0,
+        webhookCount: webhookUrls.length,
+        activeListeners: sseConnections.size,
+        agentListeners: agentConnections.size,
+      });
     }
 
     // Match route

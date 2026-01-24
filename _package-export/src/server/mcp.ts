@@ -13,6 +13,7 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
+import type { ActionRequest } from "../types.js";
 
 // -----------------------------------------------------------------------------
 // Configuration
@@ -95,6 +96,11 @@ const ReplySchema = z.object({
 
 const GetSessionSchema = z.object({
   sessionId: z.string().describe("The session ID to get"),
+});
+
+const WaitForActionSchema = z.object({
+  sessionId: z.string().optional().describe("Optional session ID to filter events. If not provided, waits for action on ANY session."),
+  timeoutSeconds: z.number().optional().default(60).describe("Timeout in seconds (default: 60, max: 300)"),
 });
 
 // -----------------------------------------------------------------------------
@@ -222,6 +228,25 @@ const TOOLS = [
       required: ["annotationId", "message"],
     },
   },
+  {
+    name: "agentation_wait_for_action",
+    description:
+      "Block until the user clicks 'Send to Agent' in the browser. Returns the action request with all annotations and formatted output. Use this to receive push-like notifications instead of polling. The tool will block until an action is requested or timeout is reached.",
+    inputSchema: {
+      type: "object" as const,
+      properties: {
+        sessionId: {
+          type: "string",
+          description: "Optional session ID to filter. If not provided, waits for action on ANY session.",
+        },
+        timeoutSeconds: {
+          type: "number",
+          description: "Timeout in seconds (default: 60, max: 300)",
+        },
+      },
+      required: [],
+    },
+  },
 ];
 
 // -----------------------------------------------------------------------------
@@ -279,6 +304,115 @@ function error(message: string): ToolResult {
     content: [{ type: "text", text: message }],
     isError: true,
   };
+}
+
+/**
+ * Result from waitForActionEvent with error details
+ */
+type WaitResult =
+  | { type: "action"; payload: ActionRequest }
+  | { type: "timeout" }
+  | { type: "error"; message: string };
+
+/**
+ * Wait for an action.requested event via SSE from the HTTP server.
+ * Returns the ActionRequest payload, timeout, or error details.
+ *
+ * This uses SSE instead of in-memory eventBus so it works when MCP server
+ * runs as a separate process from the HTTP server (--mcp-only mode).
+ */
+function waitForActionEvent(
+  sessionId: string | undefined,
+  timeoutMs: number
+): Promise<WaitResult> {
+  return new Promise((resolve) => {
+    let aborted = false;
+    const controller = new AbortController();
+
+    const cleanup = () => {
+      aborted = true;
+      controller.abort();
+    };
+
+    // Set timeout
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      resolve({ type: "timeout" });
+    }, timeoutMs);
+
+    // Connect to SSE endpoint with agent=true to be counted as an agent listener
+    const sseUrl = sessionId
+      ? `${httpBaseUrl}/sessions/${sessionId}/events?agent=true`
+      : `${httpBaseUrl}/events?agent=true`;
+
+    fetch(sseUrl, {
+      signal: controller.signal,
+      headers: { Accept: "text/event-stream" },
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          clearTimeout(timeoutId);
+          cleanup();
+          resolve({ type: "error", message: `HTTP server returned ${res.status}: ${res.statusText}` });
+          return;
+        }
+        if (!res.body) {
+          clearTimeout(timeoutId);
+          cleanup();
+          resolve({ type: "error", message: "No response body from SSE endpoint" });
+          return;
+        }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (!aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              try {
+                const event = JSON.parse(line.slice(6));
+                if (event.type === "action.requested") {
+                  // If filtering by session, check it matches
+                  if (sessionId && event.sessionId !== sessionId) {
+                    continue;
+                  }
+                  clearTimeout(timeoutId);
+                  cleanup();
+                  resolve({ type: "action", payload: event.payload as ActionRequest });
+                  return;
+                }
+              } catch {
+                // Ignore parse errors for individual events
+              }
+            }
+          }
+        }
+      })
+      .catch((err) => {
+        // Connection error or aborted
+        if (!aborted) {
+          clearTimeout(timeoutId);
+          const message = err instanceof Error ? err.message : "Unknown connection error";
+          // Check for common connection errors
+          if (message.includes("ECONNREFUSED") || message.includes("fetch failed")) {
+            resolve({ type: "error", message: `Cannot connect to HTTP server at ${httpBaseUrl}. Is the agentation server running?` });
+          } else if (message.includes("abort")) {
+            // Aborted by timeout - already handled
+            resolve({ type: "timeout" });
+          } else {
+            resolve({ type: "error", message: `Connection error: ${message}` });
+          }
+        }
+      });
+  });
 }
 
 async function handleTool(name: string, args: unknown): Promise<ToolResult> {
@@ -415,6 +549,32 @@ async function handleTool(name: string, args: unknown): Promise<ToolResult> {
           return error(`Annotation not found: ${annotationId}`);
         }
         throw err;
+      }
+    }
+
+    case "agentation_wait_for_action": {
+      const parsed = WaitForActionSchema.parse(args);
+      const sessionId = parsed.sessionId;
+      // Clamp timeout between 1 and 300 seconds
+      const timeoutSeconds = Math.min(300, Math.max(1, parsed.timeoutSeconds ?? 60));
+      const timeoutMs = timeoutSeconds * 1000;
+
+      const result = await waitForActionEvent(sessionId, timeoutMs);
+
+      switch (result.type) {
+        case "action":
+          return success({
+            timeout: false,
+            action: result.payload,
+          });
+        case "timeout":
+          return success({
+            timeout: true,
+            message: `No action requested within ${timeoutSeconds} seconds`,
+            sessionId: sessionId ?? "any",
+          });
+        case "error":
+          return error(result.message);
       }
     }
 

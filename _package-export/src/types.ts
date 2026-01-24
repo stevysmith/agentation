@@ -89,14 +89,22 @@ export type SAFEventType =
   | "session.created"
   | "session.updated"
   | "session.closed"
-  | "thread.message";
+  | "thread.message"
+  | "action.requested";
+
+export type ActionRequest = {
+  sessionId: string;
+  annotations: Annotation[];
+  output: string; // Pre-formatted markdown output
+  timestamp: string;
+};
 
 export type SAFEvent = {
   type: SAFEventType;
   timestamp: string; // ISO 8601
   sessionId: string;
   sequence: number; // Monotonic for ordering/dedup/replay
-  payload: Annotation | Session | ThreadMessage;
+  payload: Annotation | Session | ThreadMessage | ActionRequest;
 };
 
 // -----------------------------------------------------------------------------

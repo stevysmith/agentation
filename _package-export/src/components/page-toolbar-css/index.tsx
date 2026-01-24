@@ -23,6 +23,7 @@ import {
   IconEyeMinus,
   IconCopyAlt,
   IconCopyAnimated,
+  IconSendAnimated,
   IconTrashAlt,
   IconXmark,
   IconCheckmark,
@@ -63,6 +64,7 @@ import {
   syncAnnotation,
   updateAnnotation as updateAnnotationOnServer,
   deleteAnnotation as deleteAnnotationFromServer,
+  requestAction,
 } from "../../utils/sync";
 import { getReactComponentName } from "../../utils/react-detection";
 
@@ -121,6 +123,7 @@ type HoverInfo = {
 
 type OutputDetailLevel = "compact" | "standard" | "detailed" | "forensic";
 type ReactComponentMode = "smart" | "filtered" | "all" | "off";
+type AgentMode = "claude-code" | "manual" | "custom";
 
 type ToolbarSettings = {
   outputDetail: OutputDetailLevel;
@@ -128,6 +131,7 @@ type ToolbarSettings = {
   annotationColor: string;
   blockInteractions: boolean;
   reactComponentMode: ReactComponentMode;
+  agentMode: AgentMode;
 };
 
 const DEFAULT_SETTINGS: ToolbarSettings = {
@@ -136,7 +140,30 @@ const DEFAULT_SETTINGS: ToolbarSettings = {
   annotationColor: "#3c82f7",
   blockInteractions: false,
   reactComponentMode: "filtered",
+  agentMode: "manual",
 };
+
+const AGENT_MODE_OPTIONS: {
+  value: AgentMode;
+  label: string;
+  tooltip: string;
+}[] = [
+  {
+    value: "claude-code",
+    label: "Claude Code",
+    tooltip: "Annotations sync automatically when you message Claude",
+  },
+  {
+    value: "manual",
+    label: "Manual",
+    tooltip: "Click to send annotations to your agent",
+  },
+  {
+    value: "custom",
+    label: "Custom",
+    tooltip: "Triggers configured webhooks when clicked",
+  },
+];
 
 const REACT_MODE_OPTIONS: {
   value: ReactComponentMode;
@@ -401,6 +428,7 @@ export function PageFeedbackToolbarCSS({
     reactComponents?: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [sent, setSent] = useState(false);
   const [cleared, setCleared] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [hoveredMarkerId, setHoveredMarkerId] = useState<string | null>(null);
@@ -485,6 +513,8 @@ export function PageFeedbackToolbarCSS({
     if (showSettings) {
       setShowSettingsVisible(true);
     } else {
+      // Reset tooltips when settings close (fixes tooltips not showing after closing settings)
+      setTooltipsHidden(false);
       const timer = setTimeout(() => setShowSettingsVisible(false), 0);
       return () => clearTimeout(timer);
     }
@@ -1767,6 +1797,44 @@ export function PageFeedbackToolbarCSS({
     onCopy,
   ]);
 
+  // Track delivery status for better feedback
+  const [lastDelivery, setLastDelivery] = useState<{ total: number; sseListeners: number; webhooks: number } | null>(null);
+  const [sendFailed, setSendFailed] = useState(false);
+
+  // Send to agent (triggers action.requested event)
+  const sendToAgent = useCallback(async () => {
+    if (!endpoint || !currentSessionId || connectionStatus !== "connected") return;
+
+    const output = generateOutput(annotations, pathname, settings.outputDetail, settings.reactComponentMode);
+    if (!output) return;
+
+    try {
+      const response = await requestAction(endpoint, currentSessionId, output);
+      setLastDelivery(response.delivered);
+      // Only animate checkmark if something received the action
+      if (response.delivered.total > 0) {
+        setSent(true);
+      } else {
+        setSendFailed(true);
+      }
+      setTimeout(() => {
+        setSent(false);
+        setSendFailed(false);
+        setLastDelivery(null);
+      }, 2500);
+    } catch (error) {
+      console.warn("[Agentation] Failed to send to agent:", error);
+    }
+  }, [
+    endpoint,
+    currentSessionId,
+    connectionStatus,
+    annotations,
+    pathname,
+    settings.outputDetail,
+    settings.reactComponentMode,
+  ]);
+
   // Toolbar dragging - mousemove and mouseup
   useEffect(() => {
     if (!dragStartPos) return;
@@ -2017,6 +2085,7 @@ export function PageFeedbackToolbarCSS({
         {/* Morphing container */}
         <div
           className={`${styles.toolbarContainer} ${!isDarkMode ? styles.light : ""} ${isActive ? styles.expanded : styles.collapsed} ${showEntranceAnimation ? styles.entrance : ""} ${isDraggingToolbar ? styles.dragging : ""}`}
+          data-agent-mode={settings.agentMode}
           onClick={
             !isActive
               ? (e) => {
@@ -2118,6 +2187,41 @@ export function PageFeedbackToolbarCSS({
                 <span className={styles.shortcut}>C</span>
               </span>
             </div>
+
+            {/* Sync button - auto-synced state for Claude Code, clickable for Manual/Custom */}
+            {connectionStatus === "connected" && (
+              <div className={styles.buttonWrapper}>
+                <button
+                  className={`${styles.controlButton} ${!isDarkMode ? styles.light : ""}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (settings.agentMode !== "claude-code") {
+                      sendToAgent();
+                    }
+                  }}
+                  disabled={!hasAnnotations && settings.agentMode !== "claude-code"}
+                  data-active={sent || settings.agentMode === "claude-code"}
+                  data-auto-sync={settings.agentMode === "claude-code"}
+                  data-failed={sendFailed}
+                >
+                  <IconSendAnimated size={24} sent={sent || settings.agentMode === "claude-code"} />
+                  {hasAnnotations && !sent && !sendFailed && settings.agentMode !== "claude-code" && (
+                    <span className={styles.buttonBadge}>{annotations.length}</span>
+                  )}
+                </button>
+                <span className={`${styles.buttonTooltip} ${sent || sendFailed ? styles.tooltipVisible : ""}`}>
+                  {settings.agentMode === "claude-code"
+                    ? "Auto-synced"
+                    : sendFailed
+                      ? "No listeners"
+                      : sent
+                        ? (settings.agentMode === "custom"
+                            ? `Sent to ${lastDelivery?.webhooks || 0} webhook${lastDelivery?.webhooks === 1 ? "" : "s"}`
+                            : "Sent!")
+                        : (settings.agentMode === "custom" ? "Trigger webhooks" : "Send to agent")}
+                </span>
+              </div>
+            )}
 
             <div className={styles.buttonWrapper}>
               <button
@@ -2309,6 +2413,57 @@ export function PageFeedbackToolbarCSS({
                       <span
                         key={option.value}
                         className={`${styles.cycleDot} ${!isDarkMode ? styles.light : ""} ${settings.reactComponentMode === option.value ? styles.active : ""}`}
+                      />
+                    ))}
+                  </span>
+                </button>
+              </div>
+
+              <div className={styles.settingsRow}>
+                <div
+                  className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
+                >
+                  Agent Mode
+                  <span
+                    className={styles.helpIcon}
+                    data-tooltip={
+                      AGENT_MODE_OPTIONS.find(
+                        (opt) => opt.value === settings.agentMode,
+                      )?.tooltip || "How annotations are sent to your AI agent"
+                    }
+                  >
+                    <IconHelp size={20} />
+                  </span>
+                </div>
+                <button
+                  className={`${styles.cycleButton} ${!isDarkMode ? styles.light : ""}`}
+                  onClick={() => {
+                    const currentIndex = AGENT_MODE_OPTIONS.findIndex(
+                      (opt) => opt.value === settings.agentMode,
+                    );
+                    const nextIndex =
+                      (currentIndex + 1) % AGENT_MODE_OPTIONS.length;
+                    setSettings((s) => ({
+                      ...s,
+                      agentMode: AGENT_MODE_OPTIONS[nextIndex].value,
+                    }));
+                  }}
+                >
+                  <span
+                    key={settings.agentMode}
+                    className={styles.cycleButtonText}
+                  >
+                    {
+                      AGENT_MODE_OPTIONS.find(
+                        (opt) => opt.value === settings.agentMode,
+                      )?.label
+                    }
+                  </span>
+                  <span className={styles.cycleDots}>
+                    {AGENT_MODE_OPTIONS.map((option) => (
+                      <span
+                        key={option.value}
+                        className={`${styles.cycleDot} ${!isDarkMode ? styles.light : ""} ${settings.agentMode === option.value ? styles.active : ""}`}
                       />
                     ))}
                   </span>

@@ -172,7 +172,7 @@ export default function AgentationDocs() {
         </section>
 
         <section className="quickstart-links">
-          <p><Link href="/protocol" className="styled-link">Set up real-time sync with MCP <span className="arrow">→</span></Link></p>
+          <p><Link href="/agents" className="styled-link">Set up real-time sync with MCP <span className="arrow">→</span></Link></p>
           <p><Link href="/api" className="styled-link">Build your own integration with the API <span className="arrow">→</span></Link></p>
         </section>
 

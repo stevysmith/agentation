@@ -382,7 +382,7 @@ export function SideNav() {
     { href: "/", label: "Overview" },
     { href: "/install", label: "Install" },
     {
-      href: "/spec",
+      href: "/schema",
       label: "Schema",
       badge: "v1.0",
       items: [
@@ -416,16 +416,18 @@ export function SideNav() {
     },
     { href: "/output", label: "Output" },
     {
-      href: "/protocol",
-      label: "MCP",
+      href: "/agents",
+      label: "Agents",
       items: [
         { id: 'quick-start', text: 'Quick Start' },
         { id: 'why-structured-feedback', text: 'Why Structure?' },
         { id: 'how-it-works', text: 'How It Works' },
-        { id: 'annotation-lifecycle', text: 'Annotation Lifecycle' },
+        { id: 'annotation-lifecycle', text: 'Lifecycle' },
+        { id: 'agent-mode', text: 'Agent Mode' },
+        { id: 'claude-code', text: 'Claude Code' },
+        { id: 'cursor-windsurf', text: 'Cursor & Windsurf' },
+        { id: 'webhooks', text: 'Webhooks' },
         { id: 'mcp-tools', text: 'MCP Tools' },
-        { id: 'annotation-schema', text: 'Annotation Schema' },
-        { id: 'agent-configuration', text: 'Agent Config' },
         { id: 'example-workflow', text: 'Example Workflow' },
         { id: 'http-api', text: 'HTTP API' },
         { id: 'real-time-events', text: 'Real-Time Events' },

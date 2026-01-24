@@ -3,7 +3,7 @@
  * Coordinates SSE streams, MCP notifications, and future webhooks.
  */
 
-import type { SAFEvent, SAFEventType, Annotation, Session, ThreadMessage } from "../types.js";
+import type { SAFEvent, SAFEventType, Annotation, Session, ThreadMessage, ActionRequest } from "../types.js";
 
 type EventHandler = (event: SAFEvent) => void;
 
@@ -51,7 +51,7 @@ class EventBus {
   emit(
     type: SAFEventType,
     sessionId: string,
-    payload: Annotation | Session | ThreadMessage
+    payload: Annotation | Session | ThreadMessage | ActionRequest
   ): SAFEvent {
     const event: SAFEvent = {
       type,

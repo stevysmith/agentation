@@ -102,7 +102,7 @@ function App() {
         <section>
           <h2>Annotation type</h2>
           <p>
-            The <code>Annotation</code> object passed to callbacks. See <a href="/spec">Agentation Format</a> for the full schema.
+            The <code>Annotation</code> object passed to callbacks. See <a href="/schema">Agentation Format</a> for the full schema.
           </p>
           <CodeBlock
             code={`type Annotation = {

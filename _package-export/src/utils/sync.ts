@@ -103,3 +103,36 @@ export async function deleteAnnotation(
     throw new Error(`Failed to delete annotation: ${response.status}`);
   }
 }
+
+export type ActionResponse = {
+  success: boolean;
+  annotationCount: number;
+  delivered: {
+    sseListeners: number;
+    webhooks: number;
+    total: number;
+  };
+};
+
+/**
+ * Request the agent to act on annotations.
+ * Emits an action.requested event via SSE to notify connected agents.
+ * Returns delivery info so the UI can show accurate feedback.
+ */
+export async function requestAction(
+  endpoint: string,
+  sessionId: string,
+  output: string
+): Promise<ActionResponse> {
+  const response = await fetch(`${endpoint}/sessions/${sessionId}/action`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ output }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to request action: ${response.status}`);
+  }
+
+  return response.json();
+}
