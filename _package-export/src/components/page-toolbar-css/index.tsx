@@ -126,6 +126,7 @@ type HoverInfo = {
 type OutputDetailLevel = "compact" | "standard" | "detailed" | "forensic";
 type ReactComponentMode = "smart" | "filtered" | "all" | "off";
 type AgentMode = "claude-code" | "manual" | "custom";
+type MarkerClickBehavior = "edit" | "delete";
 
 type ToolbarSettings = {
   outputDetail: OutputDetailLevel;
@@ -134,6 +135,7 @@ type ToolbarSettings = {
   blockInteractions: boolean;
   reactComponentMode: ReactComponentMode;
   agentMode: AgentMode;
+  markerClickBehavior: MarkerClickBehavior;
 };
 
 const DEFAULT_SETTINGS: ToolbarSettings = {
@@ -143,6 +145,7 @@ const DEFAULT_SETTINGS: ToolbarSettings = {
   blockInteractions: false,
   reactComponentMode: "filtered",
   agentMode: "manual",
+  markerClickBehavior: "edit",
 };
 
 const AGENT_MODE_OPTIONS: {
@@ -165,6 +168,14 @@ const AGENT_MODE_OPTIONS: {
     label: "Custom",
     tooltip: "Triggers configured webhooks when clicked",
   },
+];
+
+const MARKER_CLICK_OPTIONS: {
+  value: MarkerClickBehavior;
+  label: string;
+}[] = [
+  { value: "edit", label: "Edit" },
+  { value: "delete", label: "Delete" },
 ];
 
 const REACT_MODE_OPTIONS: {
@@ -2542,6 +2553,53 @@ export function PageFeedbackToolbarCSS({
 
             <div className={styles.settingsSection}>
               <div className={styles.settingsRow}>
+                <div
+                  className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
+                >
+                  Marker Click
+                  <span
+                    className={styles.helpIcon}
+                    data-tooltip="What happens when you click a marker"
+                  >
+                    <IconHelp size={20} />
+                  </span>
+                </div>
+                <button
+                  className={`${styles.cycleButton} ${!isDarkMode ? styles.light : ""}`}
+                  onClick={() => {
+                    const currentIndex = MARKER_CLICK_OPTIONS.findIndex(
+                      (opt) => opt.value === settings.markerClickBehavior,
+                    );
+                    const nextIndex =
+                      (currentIndex + 1) % MARKER_CLICK_OPTIONS.length;
+                    setSettings((s) => ({
+                      ...s,
+                      markerClickBehavior: MARKER_CLICK_OPTIONS[nextIndex].value,
+                    }));
+                  }}
+                >
+                  <span
+                    key={settings.markerClickBehavior}
+                    className={styles.cycleButtonText}
+                  >
+                    {MARKER_CLICK_OPTIONS.find(
+                      (opt) => opt.value === settings.markerClickBehavior,
+                    )?.label}
+                  </span>
+                  <span className={styles.cycleDots}>
+                    {MARKER_CLICK_OPTIONS.map((option) => (
+                      <span
+                        key={option.value}
+                        className={`${styles.cycleDot} ${!isDarkMode ? styles.light : ""} ${settings.markerClickBehavior === option.value ? styles.active : ""}`}
+                      />
+                    ))}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div className={styles.settingsSection}>
+              <div className={styles.settingsRow}>
                 <span
                   className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
                 >
@@ -2794,15 +2852,16 @@ export function PageFeedbackToolbarCSS({
                     ? styles.enter
                     : "";
 
+              const showDeleteHover = showDeleteState && settings.markerClickBehavior === "delete";
               return (
                 <div
                   key={annotation.id}
-                  className={`${styles.marker} ${isMulti ? styles.multiSelect : ""} ${animClass}`}
+                  className={`${styles.marker} ${isMulti ? styles.multiSelect : ""} ${animClass} ${showDeleteHover ? styles.hovered : ""}`}
                   data-annotation-marker
                   style={{
                     left: `${annotation.x}%`,
                     top: annotation.y,
-                    backgroundColor: markerColor,
+                    backgroundColor: showDeleteHover ? undefined : markerColor,
                     animationDelay: markersExiting
                       ? `${(visibleAnnotations.length - 1 - index) * 20}ms`
                       : `${index * 20}ms`,
@@ -2815,11 +2874,20 @@ export function PageFeedbackToolbarCSS({
                   onMouseLeave={() => setHoveredMarkerId(null)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!markersExiting) startEditAnnotation(annotation);
+                    console.log("Marker clicked, behavior:", settings.markerClickBehavior);
+                    if (!markersExiting) {
+                      if (settings.markerClickBehavior === "delete") {
+                        console.log("Deleting annotation");
+                        deleteAnnotation(annotation.id);
+                      } else {
+                        console.log("Editing annotation");
+                        startEditAnnotation(annotation);
+                      }
+                    }
                   }}
                 >
                   {showDeleteState ? (
-                    <IconEdit size={16} />
+                    showDeleteHover ? <IconXmark size={isMulti ? 18 : 16} /> : <IconEdit size={16} />
                   ) : (
                     <span
                       className={
@@ -2902,15 +2970,16 @@ export function PageFeedbackToolbarCSS({
                     ? styles.enter
                     : "";
 
+              const showDeleteHover = showDeleteState && settings.markerClickBehavior === "delete";
               return (
                 <div
                   key={annotation.id}
-                  className={`${styles.marker} ${styles.fixed} ${isMulti ? styles.multiSelect : ""} ${animClass}`}
+                  className={`${styles.marker} ${styles.fixed} ${isMulti ? styles.multiSelect : ""} ${animClass} ${showDeleteHover ? styles.hovered : ""}`}
                   data-annotation-marker
                   style={{
                     left: `${annotation.x}%`,
                     top: annotation.y,
-                    backgroundColor: markerColor,
+                    backgroundColor: showDeleteHover ? undefined : markerColor,
                     animationDelay: markersExiting
                       ? `${(fixedAnnotations.length - 1 - index) * 20}ms`
                       : `${index * 20}ms`,
@@ -2923,11 +2992,20 @@ export function PageFeedbackToolbarCSS({
                   onMouseLeave={() => setHoveredMarkerId(null)}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!markersExiting) startEditAnnotation(annotation);
+                    console.log("Marker clicked, behavior:", settings.markerClickBehavior);
+                    if (!markersExiting) {
+                      if (settings.markerClickBehavior === "delete") {
+                        console.log("Deleting annotation");
+                        deleteAnnotation(annotation.id);
+                      } else {
+                        console.log("Editing annotation");
+                        startEditAnnotation(annotation);
+                      }
+                    }
                   }}
                 >
                   {showDeleteState ? (
-                    <IconEdit size={16} />
+                    showDeleteHover ? <IconXmark size={isMulti ? 18 : 16} /> : <IconEdit size={16} />
                   ) : (
                     <span
                       className={
