@@ -134,6 +134,7 @@ type ToolbarSettings = {
   blockInteractions: boolean;
   reactEnabled: boolean; // Simple toggle - mode derived from outputDetail
   markerClickBehavior: MarkerClickBehavior;
+  webhookUrl: string; // Overrides prop if set
   webhooksEnabled: boolean;
 };
 
@@ -144,6 +145,7 @@ const DEFAULT_SETTINGS: ToolbarSettings = {
   blockInteractions: false,
   reactEnabled: true,
   markerClickBehavior: "edit",
+  webhookUrl: "",
   webhooksEnabled: true,
 };
 
@@ -1623,10 +1625,12 @@ export function PageFeedbackToolbarCSS({
   // Fire webhook for annotation events
   const fireWebhook = useCallback(
     async (event: string, payload: Record<string, unknown>) => {
-      if (!webhookUrl || !settings.webhooksEnabled) return;
+      // Settings webhookUrl overrides prop
+      const targetUrl = settings.webhookUrl || webhookUrl;
+      if (!targetUrl || !settings.webhooksEnabled) return;
 
       try {
-        await fetch(webhookUrl, {
+        await fetch(targetUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -1641,7 +1645,7 @@ export function PageFeedbackToolbarCSS({
         console.warn("[Agentation] Webhook failed:", error);
       }
     },
-    [webhookUrl, settings.webhooksEnabled],
+    [webhookUrl, settings.webhookUrl, settings.webhooksEnabled],
   );
 
   // Add annotation
@@ -2378,11 +2382,7 @@ export function PageFeedbackToolbarCSS({
               <span
                 className={`${styles.buttonTooltip} ${sent || sendFailed ? styles.tooltipVisible : ""}`}
               >
-                {sendFailed
-                  ? "No listeners"
-                  : sent
-                    ? "Sent!"
-                    : "Send to agent"}
+                {sendFailed ? "No listeners" : sent ? "Sent!" : "Send to agent"}
               </span>
             </div>
 
@@ -2705,7 +2705,45 @@ export function PageFeedbackToolbarCSS({
                 <div
                   className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
                 >
-                  Webhooks
+                  Webhook URL
+                  <span
+                    className={styles.helpIcon}
+                    data-tooltip="URL to receive annotation events (overrides prop)"
+                  >
+                    <IconHelp size={20} />
+                  </span>
+                </div>
+                <input
+                  type="url"
+                  placeholder="https://..."
+                  value={settings.webhookUrl}
+                  onChange={(e) =>
+                    setSettings((s) => ({
+                      ...s,
+                      webhookUrl: e.target.value,
+                    }))
+                  }
+                  style={{
+                    width: 100,
+                    padding: "2px 6px",
+                    border: "none",
+                    borderRadius: 4,
+                    fontFamily: "inherit",
+                    fontSize: "0.8125rem",
+                    fontWeight: 500,
+                    textAlign: "right",
+                    background: "transparent",
+                    color: isDarkMode ? "#fff" : "rgba(0,0,0,0.85)",
+                    outline: "none",
+                  }}
+                />
+              </div>
+
+              <div className={styles.settingsRow} style={{ marginTop: 4 }}>
+                <div
+                  className={`${styles.settingsLabel} ${!isDarkMode ? styles.light : ""}`}
+                >
+                  Webhook Enabled
                   <span
                     className={styles.helpIcon}
                     data-tooltip="Send annotation events to configured webhook URL"
