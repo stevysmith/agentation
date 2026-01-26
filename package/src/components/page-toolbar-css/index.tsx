@@ -2040,26 +2040,26 @@ export function PageFeedbackToolbarCSS({
 
         // Constrain to viewport
         const padding = 20;
-        const containerWidth = 257;
-        const circleWidth = 44;
+        const wrapperWidth = 297; // .toolbar wrapper width
         const toolbarHeight = 44;
 
-        // When expanded, constrain the full container
-        // When collapsed, only constrain the visible circle
-        if (isActive) {
-          // Expanded: constrain full 257px container
-          newX = Math.max(
-            padding,
-            Math.min(window.innerWidth - containerWidth - padding, newX),
-          );
-        } else {
-          // Collapsed: constrain 44px circle (which is at the right edge of the 257px container)
-          const circleOffset = containerWidth - circleWidth;
-          const minX = padding - circleOffset;
-          const maxX = window.innerWidth - padding - circleOffset - circleWidth;
-          newX = Math.max(minX, Math.min(maxX, newX));
-        }
+        // Content is right-aligned within wrapper via margin-left: auto
+        // Calculate content width based on state
+        const contentWidth = isActive
+          ? connectionStatus === "connected"
+            ? 297
+            : 257
+          : 44; // collapsed circle
 
+        // Content offset from wrapper left edge
+        const contentOffset = wrapperWidth - contentWidth;
+
+        // Min X: content left edge >= padding
+        const minX = padding - contentOffset;
+        // Max X: wrapper right edge <= viewport - padding
+        const maxX = window.innerWidth - padding - wrapperWidth;
+
+        newX = Math.max(minX, Math.min(maxX, newX));
         newY = Math.max(
           padding,
           Math.min(window.innerHeight - toolbarHeight - padding, newY),
@@ -2089,7 +2089,7 @@ export function PageFeedbackToolbarCSS({
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
-  }, [dragStartPos, isDraggingToolbar, isActive]);
+  }, [dragStartPos, isDraggingToolbar, isActive, connectionStatus]);
 
   // Handle toolbar drag start
   const handleToolbarMouseDown = useCallback(
@@ -2133,28 +2133,29 @@ export function PageFeedbackToolbarCSS({
 
     const constrainPosition = () => {
       const padding = 20;
-      const containerWidth = 257;
-      const circleWidth = 44;
+      const wrapperWidth = 297; // .toolbar wrapper width
       const toolbarHeight = 44;
 
       let newX = toolbarPosition.x;
       let newY = toolbarPosition.y;
 
-      // Constrain to viewport dimensions
-      if (isActive) {
-        // Expanded: constrain full 257px container
-        newX = Math.max(
-          padding,
-          Math.min(window.innerWidth - containerWidth - padding, newX),
-        );
-      } else {
-        // Collapsed: constrain 44px circle (which is at the right edge of the 257px container)
-        const circleOffset = containerWidth - circleWidth;
-        const minX = padding - circleOffset;
-        const maxX = window.innerWidth - padding - circleOffset - circleWidth;
-        newX = Math.max(minX, Math.min(maxX, newX));
-      }
+      // Content is right-aligned within wrapper via margin-left: auto
+      // Calculate content width based on state
+      const contentWidth = isActive
+        ? connectionStatus === "connected"
+          ? 297
+          : 257
+        : 44; // collapsed circle
 
+      // Content offset from wrapper left edge
+      const contentOffset = wrapperWidth - contentWidth;
+
+      // Min X: content left edge >= padding
+      const minX = padding - contentOffset;
+      // Max X: wrapper right edge <= viewport - padding
+      const maxX = window.innerWidth - padding - wrapperWidth;
+
+      newX = Math.max(minX, Math.min(maxX, newX));
       newY = Math.max(
         padding,
         Math.min(window.innerHeight - toolbarHeight - padding, newY),
@@ -2171,7 +2172,7 @@ export function PageFeedbackToolbarCSS({
 
     window.addEventListener("resize", constrainPosition);
     return () => window.removeEventListener("resize", constrainPosition);
-  }, [toolbarPosition, isActive]);
+  }, [toolbarPosition, isActive, connectionStatus]);
 
   // Keyboard shortcuts
   useEffect(() => {
