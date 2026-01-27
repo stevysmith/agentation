@@ -208,11 +208,11 @@ export default function InstallPage() {
           <h2>Choose your setup</h2>
           <ul>
             <li><strong>Just want annotations?</strong> &rarr; Basic Setup below (copy-paste to agent)</li>
-            <li><strong>Using Claude Code?</strong> &rarr; Add the <code>/agentation</code> skill (auto-setup)</li>
-            <li><strong>Building a custom agent?</strong> &rarr; Run MCP server for real-time sync</li>
+            <li><strong>Using Claude Code?</strong> &rarr; Add the <code>/agentation</code> skill (sets up component + MCP server)</li>
+            <li><strong>Building a custom agent?</strong> &rarr; Run MCP server manually for real-time sync</li>
           </ul>
           <p style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.5)", marginTop: "0.5rem" }}>
-            Most users: Basic + Claude Code skill. Power users: Basic + MCP server.
+            Most users: Basic Setup. Claude Code users: Use the skill for full auto-setup.
           </p>
         </section>
 
@@ -267,12 +267,12 @@ function App() {
           <CodeBlock code="/agentation" language="bash" copyable />
           <p
             style={{
-              fontSize: "0.875rem",
-              color: "rgba(0,0,0,0.5)",
-              marginTop: "0.5rem",
+              fontSize: "0.8125rem",
+              color: "rgba(0,0,0,0.45)",
+              marginTop: "0.375rem",
             }}
           >
-            Detects your framework, installs the package, creates a provider, and wires it into your layout.
+            Detects your framework, installs the package, wires it into your layout, and configures the MCP server for auto-start.
           </p>
         </section>
 

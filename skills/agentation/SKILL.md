@@ -39,11 +39,41 @@ Set up the Agentation annotation toolbar in this project.
    {process.env.NODE_ENV === "development" && <Agentation />}
    ```
 
-5. **Confirm setup**
-   - Tell the user to run their dev server and look for the Agentation toolbar (floating button in bottom-right corner)
+5. **Confirm component setup**
+   - Tell the user the Agentation toolbar component is configured
+
+6. **Check if MCP server already configured**
+   - Read `~/.claude/claude_code_config.json` if it exists
+   - Check if `mcpServers.agentation` entry exists
+   - If yes, skip to final confirmation step
+
+7. **Configure Claude Code MCP server**
+   - Create `~/.claude/` directory if it doesn't exist
+   - Read existing `claude_code_config.json` if present (preserve other MCP servers)
+   - Add or merge the `mcpServers.agentation` entry:
+     ```json
+     {
+       "mcpServers": {
+         "agentation": {
+           "command": "npx",
+           "args": ["agentation-mcp", "server"]
+         }
+       }
+     }
+     ```
+   - Write updated config back to file
+
+8. **Confirm full setup**
+   - Tell the user both components are set up:
+     - React component for the toolbar (`<Agentation />`)
+     - MCP server configured to auto-start with Claude Code
+   - Tell user to restart Claude Code to load the MCP server
+   - Explain that annotations will now sync to Claude automatically
 
 ## Notes
 
 - The `NODE_ENV` check ensures Agentation only loads in development
 - Agentation requires React 18
-- No additional configuration needed — it works out of the box
+- The MCP server auto-starts when Claude Code launches (uses npx, no global install needed)
+- Port 4747 is used by default for the HTTP server
+- Run `npx agentation-mcp doctor` to verify setup
