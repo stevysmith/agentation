@@ -59,7 +59,6 @@ import {
   saveSessionId,
   clearSessionId,
   saveAnnotationsWithSyncMarker,
-  getUnsyncedAnnotations,
 } from "../../utils/storage";
 import {
   createSession,
@@ -779,12 +778,19 @@ export function PageFeedbackToolbarCSS({
             saveSessionId(pathname, session.id);
             sessionEstablished = true;
 
-            // Only merge local annotations that haven't been synced to THIS session
-            const unsyncedLocal = getUnsyncedAnnotations(pathname, session.id);
+            // Find local annotations that need to be synced:
+            // 1. Annotations never synced to any session
+            // 2. Annotations synced to a different session
+            // 3. Annotations marked as synced to THIS session but missing from server
+            //    (handles server-side deletion)
+            const allLocalAnnotations = loadAnnotations<Annotation>(pathname);
             const serverIds = new Set(session.annotations.map((a) => a.id));
-            const localToMerge = unsyncedLocal.filter(
-              (a) => !serverIds.has(a.id),
-            );
+            const localToMerge = allLocalAnnotations.filter((a) => {
+              // If it exists on server, don't re-upload
+              if (serverIds.has(a.id)) return false;
+              // Otherwise, needs to be synced (whether never synced, synced elsewhere, or missing from server)
+              return true;
+            });
 
             // Sync unsynced local annotations to this session
             if (localToMerge.length > 0) {
