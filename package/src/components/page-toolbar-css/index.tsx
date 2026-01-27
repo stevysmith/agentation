@@ -2303,17 +2303,50 @@ export function PageFeedbackToolbarCSS({
         if (pendingAnnotation) {
           // Let popup handle
         } else if (isActive) {
+          hideTooltipsUntilMouseLeave();
           setIsActive(false);
         }
       }
 
+      // Skip other shortcuts if typing or modifier keys are held
+      if (isTyping || e.metaKey || e.ctrlKey) return;
+
+      // "P" to toggle pause/freeze
+      if (e.key === "p" || e.key === "P") {
+        e.preventDefault();
+        hideTooltipsUntilMouseLeave();
+        toggleFreeze();
+      }
+
+      // "H" to toggle marker visibility
+      if (e.key === "h" || e.key === "H") {
+        if (annotations.length > 0) {
+          e.preventDefault();
+          hideTooltipsUntilMouseLeave();
+          setShowMarkers((prev) => !prev);
+        }
+      }
+
+      // "C" to copy output
+      if (e.key === "c" || e.key === "C") {
+        if (annotations.length > 0) {
+          e.preventDefault();
+          hideTooltipsUntilMouseLeave();
+          copyOutput();
+        }
+      }
+
+      // "X" to clear all
+      if (e.key === "x" || e.key === "X") {
+        if (annotations.length > 0) {
+          e.preventDefault();
+          hideTooltipsUntilMouseLeave();
+          clearAll();
+        }
+      }
+
       // "S" to send annotations
-      if (
-        (e.key === "s" || e.key === "S") &&
-        !isTyping &&
-        !e.metaKey &&
-        !e.ctrlKey
-      ) {
+      if (e.key === "s" || e.key === "S") {
         const hasValidWebhook =
           isValidUrl(settings.webhookUrl) || isValidUrl(webhookUrl || "");
         if (
@@ -2322,6 +2355,7 @@ export function PageFeedbackToolbarCSS({
           sendState === "idle"
         ) {
           e.preventDefault();
+          hideTooltipsUntilMouseLeave();
           sendToWebhook();
         }
       }
@@ -2337,6 +2371,9 @@ export function PageFeedbackToolbarCSS({
     webhookUrl,
     sendState,
     sendToWebhook,
+    toggleFreeze,
+    copyOutput,
+    clearAll,
   ]);
 
   if (!mounted) return null;
