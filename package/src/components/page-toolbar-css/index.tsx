@@ -2128,7 +2128,7 @@ export function PageFeedbackToolbarCSS({
   useEffect(() => {
     if (!dragStartPos) return;
 
-    const DRAG_THRESHOLD = 5; // pixels
+    const DRAG_THRESHOLD = 10; // pixels
 
     const handleMouseMove = (e: MouseEvent) => {
       const deltaX = e.clientX - dragStartPos.x;
@@ -2180,10 +2180,6 @@ export function PageFeedbackToolbarCSS({
       // If we were actually dragging, set flag to prevent click event
       if (isDraggingToolbar) {
         justFinishedToolbarDragRef.current = true;
-        // Clear flag after a short delay
-        setTimeout(() => {
-          justFinishedToolbarDragRef.current = false;
-        }, 50);
       }
       setIsDraggingToolbar(false);
       setDragStartPos(null);
@@ -2380,6 +2376,7 @@ export function PageFeedbackToolbarCSS({
               ? (e) => {
                   // Don't activate if we just finished dragging
                   if (justFinishedToolbarDragRef.current) {
+                    justFinishedToolbarDragRef.current = false;
                     e.preventDefault();
                     return;
                   }
