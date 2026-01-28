@@ -73,10 +73,10 @@ pnpm add agentation-mcp`}
           <h2 id="cli-commands">CLI Commands</h2>
           <CodeBlock
             language="bash"
-            code={`npx agentation-mcp init                    # Interactive setup wizard
-npx agentation-mcp server [options]        # Start the annotation server
-npx agentation-mcp doctor                  # Check your setup
-npx agentation-mcp help                    # Show help`}
+            code={`npx agentation-mcp init      # Setup wizard
+npx agentation-mcp server    # Start server
+npx agentation-mcp doctor    # Check setup
+npx agentation-mcp help      # Show help`}
           />
         </section>
 
