@@ -220,9 +220,8 @@ export default function AgentationDocs() {
       <article className="article">
         <Link href="/blog/introducing-agentation-2" className="announcement-banner">
           <span className="pulse-dot" />
-          <span className="hide-on-mobile">New in 2.0: Your agent sees your annotations directly. No more copy-paste.</span>
-          <span className="show-on-mobile">New in 2.0: Agents see your annotations directly.</span>
-          <span style={{ color: '#4a9eff', marginLeft: '0.5rem' }}>Learn more &rarr;</span>
+          <span><span style={{ fontWeight: 500 }}>New in 2.0:</span> Real-time agent sync</span>
+          <span style={{ color: '#4a9eff', marginLeft: '0.5rem' }}>&rarr;</span>
         </Link>
         <header style={{ position: 'relative' }}>
           <InstallSnippet />
