@@ -2,6 +2,7 @@
 
 import { Footer } from "../Footer";
 import { CodeBlock } from "../components/CodeBlock";
+import { MCPDiagram } from "../components/MCPDiagram";
 
 function ToolName({ children }: { children: string }) {
   return (
@@ -36,6 +37,8 @@ export default function McpPage() {
           <p style={{ marginTop: "0.75rem", fontSize: "0.8125rem", color: "rgba(0,0,0,0.55)" }}>
             <code>toolbar</code> → <code>server</code> → <code>agent</code>
           </p>
+
+          <MCPDiagram />
         </section>
 
         <section>
