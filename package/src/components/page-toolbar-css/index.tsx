@@ -2528,9 +2528,15 @@ export function PageFeedbackToolbarCSS({
 
   // Copy output
   const copyOutput = useCallback(async () => {
+    const displayUrl =
+      typeof window !== "undefined"
+        ? window.location.pathname +
+          window.location.search +
+          window.location.hash
+        : pathname;
     const output = generateOutput(
       annotations,
-      pathname,
+      displayUrl,
       settings.outputDetail,
       effectiveReactMode,
     );
@@ -2566,9 +2572,15 @@ export function PageFeedbackToolbarCSS({
 
   // Send to webhook
   const sendToWebhook = useCallback(async () => {
+    const displayUrl =
+      typeof window !== "undefined"
+        ? window.location.pathname +
+          window.location.search +
+          window.location.hash
+        : pathname;
     const output = generateOutput(
       annotations,
-      pathname,
+      displayUrl,
       settings.outputDetail,
       effectiveReactMode,
     );

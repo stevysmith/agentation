@@ -51,6 +51,7 @@ const releases: Release[] = [
       { type: "fixed", text: "Fixed/sticky element positioning — annotations on fixed navs and sticky headers now position correctly regardless of scroll" },
       { type: "improved", text: "\"Block page interactions\" now enabled by default — prevents accidental clicks while annotating (can be toggled off in settings)" },
       { type: "fixed", text: "SVG icons broken by host page fill styles — now uses attribute selectors to avoid conflicts" },
+      { type: "fixed", text: "Query params and hash fragments now preserved in copied feedback URL" },
     ],
   },
   {
