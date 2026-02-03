@@ -342,6 +342,14 @@ export default function AgentationDocs() {
           </ul>
         </section>
 
+        <section>
+          <h2>Licensing</h2>
+          <p>
+            Agentation is free for individuals and companies for internal use. Use it to annotate your own projects, debug your own apps, or streamline feedback within your team. {" "}
+            <a href="mailto:benji@dip.org">Contact us</a> for a commercial license if you're redistributing Agentation as part of a product you sell.
+          </p>
+        </section>
+
         <section className="quickstart-links">
           <p><Link href="/mcp" className="styled-link">Set up real-time sync with MCP <span className="arrow">→</span></Link></p>
           <p><Link href="/webhooks" className="styled-link">Push annotations to external services <span className="arrow">→</span></Link></p>
