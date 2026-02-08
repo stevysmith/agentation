@@ -17,12 +17,55 @@ The toolbar appears automatically in development. Nothing to configure.
 
 ## Configuration (optional)
 
+Generate an initializer:
+
+```bash
+rails generate agentation:install
+```
+
+Or add one manually:
+
 ```ruby
 # config/environments/development.rb
 Agentation.configure do |config|
   config.endpoint = "http://localhost:4747"  # MCP sync server (default)
   config.webhook_url = "https://example.com/hooks/agentation"
+  config.copy_to_clipboard = false           # disable auto-copy
 end
+```
+
+## JavaScript events
+
+The toolbar dispatches `CustomEvent`s on `document` for every annotation lifecycle event. Use these with Stimulus controllers or plain JS:
+
+```javascript
+document.addEventListener("agentation:add", (e) => {
+  console.log("Annotation added:", e.detail);
+});
+
+document.addEventListener("agentation:delete", (e) => {
+  console.log("Annotation deleted:", e.detail);
+});
+
+document.addEventListener("agentation:update", (e) => {
+  console.log("Annotation updated:", e.detail);
+});
+
+document.addEventListener("agentation:clear", (e) => {
+  console.log("Annotations cleared:", e.detail);
+});
+
+document.addEventListener("agentation:copy", (e) => {
+  console.log("Copied markdown:", e.detail.markdown);
+});
+
+document.addEventListener("agentation:submit", (e) => {
+  console.log("Submitted:", e.detail.output, e.detail.annotations);
+});
+
+document.addEventListener("agentation:session", (e) => {
+  console.log("Session created:", e.detail.sessionId);
+});
 ```
 
 ## How it works

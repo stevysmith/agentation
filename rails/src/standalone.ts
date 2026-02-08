@@ -3,13 +3,31 @@
  *
  * Bundles React + Agentation into a single self-executing script.
  * Used by the agentation-rails gem — Rails developers never see React.
+ *
+ * Dispatches CustomEvents on document so Rails developers can listen
+ * with Stimulus controllers or plain JS:
+ *
+ *   document.addEventListener("agentation:add", (e) => { ... })
+ *   document.addEventListener("agentation:delete", (e) => { ... })
+ *   document.addEventListener("agentation:update", (e) => { ... })
+ *   document.addEventListener("agentation:clear", (e) => { ... })
+ *   document.addEventListener("agentation:copy", (e) => { ... })
+ *   document.addEventListener("agentation:submit", (e) => { ... })
+ *   document.addEventListener("agentation:session", (e) => { ... })
  */
 import React from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { PageFeedbackToolbarCSS } from "agentation";
+import type { Annotation } from "agentation";
 
 let root: Root | null = null;
 let container: HTMLElement | null = null;
+
+function dispatch(name: string, detail: unknown) {
+  document.dispatchEvent(
+    new CustomEvent(`agentation:${name}`, { detail, bubbles: true })
+  );
+}
 
 function getConfig(): Record<string, string> {
   const config: Record<string, string> = {};
@@ -19,7 +37,7 @@ function getConfig(): Record<string, string> {
       if (attr.name.startsWith("data-")) {
         const key = attr.name
           .slice(5)
-          .replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+          .replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
         config[key] = attr.value;
       }
     }
@@ -36,14 +54,28 @@ function mount() {
   container.id = "agentation-root";
   document.body.appendChild(container);
 
+  const props: Record<string, unknown> = {
+    endpoint: config.endpoint || undefined,
+    sessionId: config.sessionId || undefined,
+    webhookUrl: config.webhookUrl || undefined,
+
+    onAnnotationAdd: (a: Annotation) => dispatch("add", a),
+    onAnnotationDelete: (a: Annotation) => dispatch("delete", a),
+    onAnnotationUpdate: (a: Annotation) => dispatch("update", a),
+    onAnnotationsClear: (cleared: Annotation[]) => dispatch("clear", cleared),
+    onCopy: (markdown: string) => dispatch("copy", { markdown }),
+    onSubmit: (output: string, annotations: Annotation[]) =>
+      dispatch("submit", { output, annotations }),
+    onSessionCreated: (sessionId: string) =>
+      dispatch("session", { sessionId }),
+  };
+
+  if (config.copyToClipboard === "false") {
+    props.copyToClipboard = false;
+  }
+
   root = createRoot(container);
-  root.render(
-    React.createElement(PageFeedbackToolbarCSS, {
-      endpoint: config.endpoint || undefined,
-      sessionId: config.sessionId || undefined,
-      webhookUrl: config.webhookUrl || undefined,
-    })
-  );
+  root.render(React.createElement(PageFeedbackToolbarCSS, props));
 }
 
 function unmount() {
