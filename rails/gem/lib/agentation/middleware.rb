@@ -1,3 +1,5 @@
+require "erb"
+
 module Agentation
   ASSET_PATH = "/__agentation__/agentation.js"
 
@@ -14,12 +16,17 @@ module Agentation
 
       return [status, headers, response] unless inject?(status, headers)
 
+      # Skip streaming responses — we can't buffer those
+      return [status, headers, response] if streaming?(headers, response)
+
       body = +""
       response.each { |part| body << part }
       response.close if response.respond_to?(:close)
 
       body = body.sub(%r{</head>}i, "#{head_tag}\n</head>")
-      body = body.sub(%r{</body>}i, "#{body_tag}\n</body>") if body_tag
+
+      config_tag = body_tag
+      body = body.sub(%r{</body>}i, "#{config_tag}\n</body>") if config_tag
 
       headers.delete("Content-Length")
 
@@ -28,13 +35,13 @@ module Agentation
 
     private
 
-    def serve_js(env)
+    def serve_js(_env)
       [
         200,
         {
           "Content-Type" => "application/javascript",
           "Content-Length" => agentation_js.bytesize.to_s,
-          "Cache-Control" => "no-cache"
+          "Cache-Control" => "no-store"
         },
         [agentation_js]
       ]
@@ -48,22 +55,33 @@ module Agentation
       content_type&.include?("text/html")
     end
 
+    def streaming?(_headers, response)
+      response.respond_to?(:stream) || !response.respond_to?(:each)
+    end
+
     def head_tag
       @head_tag ||= %(<script src="#{ASSET_PATH}" defer></script>)
     end
 
+    # Recomputed each request so config changes via console/reloader take effect
     def body_tag
-      @body_tag ||= begin
-        config = Agentation.configuration
-        attrs = []
-        attrs << %( data-endpoint="#{config.endpoint}") if config.endpoint
-        attrs << %( data-session-id="#{config.session_id}") if config.session_id
-        attrs << %( data-webhook-url="#{config.webhook_url}") if config.webhook_url
+      config = Agentation.configuration
+      attrs = []
+      attrs << data_attr("endpoint", config.endpoint)
+      attrs << data_attr("session-id", config.session_id)
+      attrs << data_attr("webhook-url", config.webhook_url)
+      attrs << data_attr("copy-to-clipboard", config.copy_to_clipboard) unless config.copy_to_clipboard.nil?
+      attrs.compact!
 
-        return nil if attrs.empty?
+      return nil if attrs.empty?
 
-        %(<div id="agentation-config" style="display:none"#{attrs.join}></div>)
-      end
+      %(<div id="agentation-config" style="display:none"#{attrs.join}></div>)
+    end
+
+    def data_attr(name, value)
+      return nil unless value
+
+      %( data-#{name}="#{ERB::Util.html_escape(value)}")
     end
 
     def agentation_js
