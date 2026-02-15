@@ -656,8 +656,8 @@ export async function handleTool(name: string, args: unknown): Promise<ToolResul
             })),
           });
         }
-      } catch {
-        // If pending check fails, fall through to SSE watch
+      } catch (err) {
+        console.error("[MCP] Pending drain failed, falling through to SSE watch:", err);
       }
 
       const result = await watchForAnnotations(

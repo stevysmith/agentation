@@ -12,11 +12,17 @@ Autonomously critique a web page by adding design annotations via the Agentation
 
 The browser MUST be visible. Never run headless. The user watches you scan, hover, click, and annotate.
 
-**Important**: Stale sessions from previous runs will block launch with "Browser not launched. Call launch first." Always close the current session before opening:
+**Preflight**: Verify `agent-browser` is available before anything else:
 
 ```bash
-# Close any existing session first (safe even if nothing is running)
-agent-browser close 2>/dev/null; agent-browser --headed open <url>
+command -v agent-browser >/dev/null || { echo "ERROR: agent-browser not found. Install the agent-browser skill first."; exit 1; }
+```
+
+**Launch**: Try opening directly first. Only close an existing session if the open command fails with a stale session error — this avoids killing a browser someone else is using:
+
+```bash
+# Try to open. If it fails (stale session), close first then retry.
+agent-browser --headed open <url> 2>&1 || { agent-browser close 2>/dev/null; agent-browser --headed open <url>; }
 ```
 
 Then verify the Agentation toolbar is present and expand it:
@@ -166,6 +172,7 @@ Restart Claude Code after installing. Verify with `/agentation-self-driving` —
 - **Add button stays disabled**: Text wasn't filled — re-snapshot and fill the textbox
 - **Page navigated**: "Block page interactions" is off — enable via toolbar settings
 - **Annotation count didn't increase**: Submission failed — dialog may still be open, re-snapshot and check
+- **Interrupted mid-run (Ctrl+C)**: The browser stays open with whatever state it was in. Run `agent-browser close` to clean up before starting a new session
 
 ## agent-browser Pitfalls
 
@@ -179,7 +186,7 @@ These will silently break the workflow if you're not aware of them:
 | `eval` with backslash-escaped quotes | Escaped inner quotes break across shells | Drop the quotes: `[class*=toggleContent]` works for simple values without spaces |
 | `snapshot -i \| head -50` | Annotation dialog refs (`textbox "What should change?"`, `Add`, `Cancel`) appear at the BOTTOM of the snapshot | Always read the **full** snapshot output — never truncate |
 | `click @ref` on overlay elements | The click goes through to the real DOM, bypassing the Agentation overlay | Use `mouse move` → `mouse down left` → `mouse up left` for coordinate-based clicks that the overlay intercepts |
-| `--headed open` fails with "Browser not launched" | Stale sessions from previous runs block new launches | Run `agent-browser close 2>/dev/null` before opening |
+| `--headed open` fails with "Browser not launched" | Stale sessions from previous runs block new launches | Run `agent-browser close 2>/dev/null` then retry the open command |
 
 **Rule of thumb**: `@ref` works for interaction commands (`click`, `fill`, `type`, `hover`). For everything else (`eval`, `get`, `scrollintoview`), use CSS selectors via `querySelector` in an eval.
 
